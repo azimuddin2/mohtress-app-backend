@@ -26,8 +26,8 @@ const getAllBookings = catchAsync(async (req, res) => {
   });
 });
 
-const getBookings = catchAsync(async (req, res) => {
-  const result = await BookingServices.getBookingsFromDB(req.query);
+const getBookingsRequest = catchAsync(async (req, res) => {
+  const result = await BookingServices.getBookingsRequestFromDB(req.query);
 
   sendResponse(res, {
     statusCode: 200,
@@ -37,7 +37,7 @@ const getBookings = catchAsync(async (req, res) => {
   });
 });
 
-const getBookingsByCustomer = catchAsync(async (req, res) => {
+const getBookingsHistoryByCustomer = catchAsync(async (req, res) => {
   const userId = req.user.userId;
   const status = req.query.status as string;
 
@@ -45,7 +45,7 @@ const getBookingsByCustomer = catchAsync(async (req, res) => {
     throw new AppError(400, 'Status is required');
   }
 
-  const result = await BookingServices.getBookingsByCustomerFromDB(
+  const result = await BookingServices.getBookingsHistoryByCustomerFromDB(
     userId,
     status,
   );
@@ -130,102 +130,28 @@ const bookingDeclineRequest = catchAsync(async (req, res) => {
   });
 });
 
-// const getBookingAppointments = catchAsync(async (req, res) => {
-//   const result = await BookingServices.getBookingAppointmentsFromDB(req.query);
+const getVendorAppHomeBookings = catchAsync(async (req, res) => {
+  const result = await BookingServices.getVendorAppHomeBookingsFromDB(
+    req.query,
+  );
 
-//   sendResponse(res, {
-//     statusCode: 200,
-//     success: true,
-//     message: 'Bookings retrieved successfully',
-//     data: result,
-//   });
-// });
-
-// const getBookingsByEmail = catchAsync(async (req, res) => {
-//   const { email } = req.query;
-//   const result = await BookingServices.getBookingsByEmailFromDB(
-//     email as string,
-//   );
-
-//   sendResponse(res, {
-//     statusCode: 200,
-//     success: true,
-//     message: 'Bookings fetched successfully',
-//     data: result,
-//   });
-// });
-
-// const updateBookingRequest = catchAsync(async (req, res) => {
-//   const { id } = req.params;
-//   const result = await BookingServices.updateBookingRequestIntoDB(id, req.body);
-
-//   sendResponse(res, {
-//     statusCode: 201,
-//     success: true,
-//     message: 'Service booking successfully',
-//     data: result,
-//   });
-// });
-
-// const bookingApprovedRequest = catchAsync(async (req, res) => {
-//   const { id } = req.params;
-//   const vendorApproved = Boolean(req.body.vendorApproved);
-
-//   const updatedBooking = await BookingServices.bookingApprovedRequestIntoDB(
-//     id,
-//     vendorApproved,
-//   );
-
-//   sendResponse(res, {
-//     statusCode: 200,
-//     success: true,
-//     message: `Request ${vendorApproved ? 'approved' : 'rejected'} successfully.`,
-//     data: updatedBooking,
-//   });
-// });
-
-// const bookingAssignedToMember = catchAsync(async (req, res) => {
-//   const { id } = req.params;
-//   const result = await BookingServices.bookingAssignedToMemberIntoDB(
-//     id,
-//     req.body,
-//   );
-
-//   sendResponse(res, {
-//     statusCode: 201,
-//     success: true,
-//     message: 'Member assigned successfully',
-//     data: result,
-//   });
-// });
-
-// const updateBookingStatus = catchAsync(async (req, res) => {
-//   const { id } = req.params;
-//   const result = await BookingServices.updateBookingStatusIntoDB(id, req.body);
-
-//   sendResponse(res, {
-//     statusCode: 200,
-//     success: true,
-//     message: 'Status updated successfully.',
-//     data: result,
-//   });
-// });
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: 'Bookings retrieved successfully',
+    data: result,
+  });
+});
 
 export const BookingControllers = {
   createBooking,
   getAllBookings,
-  getBookings,
-  getBookingsByCustomer,
+  getBookingsRequest,
+  getBookingsHistoryByCustomer,
   getBookingById,
   bookingCompletedStatus,
   bookingCanceledStatus,
   bookingApprovedRequest,
   bookingDeclineRequest,
-  // getAllBookingByUser,
-  // getBookingAppointments,
-  // getBookingsByEmail,
-  // updateBookingRequest,
-  // bookingApprovedRequest,
-  // bookingAssignedToMember,
-  // updateBookingStatus,
+  getVendorAppHomeBookings,
 };

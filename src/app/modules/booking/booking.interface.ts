@@ -2,7 +2,11 @@ import { Types } from 'mongoose';
 import { TUser } from '../user/user.interface';
 import { TSpecialist } from '../Specialist/Specialist.interface';
 
-export type TBookingStatus = 'pending' | 'canceled' | 'completed';
+export type TBookingStatus =
+  | 'pending'
+  | 'in-process'
+  | 'canceled'
+  | 'completed';
 
 export type TBookingRequest = 'pending' | 'approved' | 'decline';
 

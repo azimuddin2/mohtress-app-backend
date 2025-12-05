@@ -18,21 +18,21 @@ router.post(
   BookingControllers.createBooking,
 );
 
-// router.get(
-//   '/appointments',
-//   auth('vendor'),
-//   BookingControllers.getBookingAppointments,
-// );
+router.get(
+  '/vendor-home',
+  auth('owner', 'freelancer'),
+  BookingControllers.getVendorAppHomeBookings,
+);
 
 router.get(
   '/request',
   auth('owner', 'freelancer'),
-  BookingControllers.getBookings,
+  BookingControllers.getBookingsRequest,
 );
 
 router.get('/all', auth('admin'), BookingControllers.getAllBookings);
 
-router.get('/', auth('customer'), BookingControllers.getBookingsByCustomer);
+router.get('/', auth('customer'), BookingControllers.getBookingsHistoryByCustomer);
 
 router.get('/:id', BookingControllers.getBookingById);
 
@@ -63,32 +63,5 @@ router.put(
   validateRequest(BookingValidation.updateBookingRequestValidationSchema),
   BookingControllers.bookingDeclineRequest,
 );
-
-// router.patch(
-//   '/:id',
-//   auth('user'),
-//   validateRequest(BookingValidation.updateBookingValidationSchema),
-//   BookingControllers.updateBookingRequest,
-// );
-
-// router.put(
-//   '/update-request/:id',
-//   auth('vendor'),
-//   BookingControllers.bookingApprovedRequest,
-// );
-
-// router.patch(
-//   '/assign/:id',
-//   auth('vendor'),
-//   validateRequest(BookingValidation.assignedMemberValidationSchema),
-//   BookingControllers.bookingAssignedToMember,
-// );
-
-// router.put(
-//   '/update-status/:id',
-//   auth('vendor'),
-//   validateRequest(BookingValidation.updateBookingStatusValidationSchema),
-//   BookingControllers.updateBookingStatus,
-// );
 
 export const BookingRoutes = router;

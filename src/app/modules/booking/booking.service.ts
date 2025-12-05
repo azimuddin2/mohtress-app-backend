@@ -9,6 +9,7 @@ import { Specialist } from '../Specialist/Specialist.model';
 import mongoose from 'mongoose';
 import QueryBuilder from '../../builder/QueryBuilder';
 import { bookingSearchableFields } from './booking.constant';
+import { getCurrentMinutes } from './booking.utils';
 
 const createBookingIntoDB = async (payload: TBooking, files: any) => {
   const { customer, service, vendor, date, time, specialist, serviceType } =
@@ -192,7 +193,7 @@ const getAllBookingsFromDB = async (query: Record<string, unknown>) => {
   return { meta, result };
 };
 
-const getBookingsFromDB = async (query: Record<string, unknown>) => {
+const getBookingsRequestFromDB = async (query: Record<string, unknown>) => {
   const { vendor } = query;
 
   if (!vendor || !mongoose.Types.ObjectId.isValid(vendor as string)) {
@@ -226,7 +227,7 @@ const getBookingsFromDB = async (query: Record<string, unknown>) => {
   return result;
 };
 
-const getBookingsByCustomerFromDB = async (userId: string, status: string) => {
+const getBookingsHistoryByCustomerFromDB = async (userId: string, status: string) => {
   const user = await User.findById(userId).select('role email');
 
   if (!user?.email) {
@@ -329,15 +330,41 @@ const bookingCanceledStatusIntoDB = async (
 
 const bookingApprovedRequestIntoDB = async (
   id: string,
-  payload: { request: string },
+  payload: { request: 'approved' | 'pending' | 'decline' },
 ) => {
-  const isBookingExists = await Booking.findById(id);
+  // 1️⃣ Check if the booking exists
+  const booking = await Booking.findById(id);
 
-  if (!isBookingExists) {
+  if (!booking) {
     throw new AppError(404, 'This booking is not found');
   }
 
-  const result = await Booking.findByIdAndUpdate(id, payload, { new: true });
+  // 2️⃣ Prevent approving a booking that was already declined
+  if (booking.request === 'decline') {
+    throw new AppError(400, 'This booking request was already rejected');
+  }
+
+  // 3️⃣ Prevent approving a booking that is already approved
+  if (booking.request === 'approved' && payload.request === 'approved') {
+    throw new AppError(400, 'This booking request is already approved');
+  }
+
+  // 4️⃣ Prevent approving a booking if the time slot has already passed
+  const todayMinutes = getCurrentMinutes();
+  const bookingMinutes: any = booking.slotStart;
+  const today = new Date().toISOString().split('T')[0];
+
+  if (booking.date === today && bookingMinutes < todayMinutes) {
+    throw new AppError(400, 'Cannot approve an expired time slot');
+  }
+
+  // 5️⃣ Update only the request field in the database
+  const result = await Booking.findByIdAndUpdate(
+    id,
+    { request: payload.request, status: 'in-process' },
+    { new: true },
+  );
+
   return result;
 };
 
@@ -355,204 +382,111 @@ const bookingDeclineRequestIntoDB = async (
   return result;
 };
 
-// const getAllBookingByUserFromDB = async (query: Record<string, unknown>) => {
-//   const { vendor, requestType, ...filters } = query;
+const getVendorAppHomeBookingsFromDB = async (
+  query: Record<string, unknown>,
+) => {
+  const { vendor } = query;
 
-//   if (!vendor || !mongoose.Types.ObjectId.isValid(vendor as string)) {
-//     throw new AppError(400, 'Invalid Vendor ID');
-//   }
+  if (!vendor || !mongoose.Types.ObjectId.isValid(vendor as string)) {
+    throw new AppError(400, 'Invalid Owner Or Freelancer ID');
+  }
 
-//   // Base query -> always exclude deleted service
-//   let bookingQuery = Booking.find({ vendor, isDeleted: false })
-//     .populate('vendor')
-//     .populate('service');
+  const vendorId = vendor as string;
 
-//   // ✅ Custom filter for booking request type (cancel | reschedule)
-//   if (requestType && ['cancel', 'reschedule'].includes(requestType as string)) {
-//     bookingQuery = bookingQuery.find({ 'request.type': requestType });
-//   }
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
-//   const queryBuilder = new QueryBuilder(bookingQuery, filters)
-//     .search(bookingSearchableFields)
-//     .filter()
-//     .sort()
-//     .paginate()
-//     .fields();
+  const now = getCurrentMinutes(); // current time in minutes from midnight
 
-//   const meta = await queryBuilder.countTotal();
-//   const result = await queryBuilder.modelQuery;
+  // Fetch all vendor bookings
+  const bookings = await Booking.find({ vendor: vendorId, isDeleted: false })
+    .populate('service')
+    .populate({
+      path: 'vendor',
+      select:
+        '_id fullName email phone streetAddress city state image location',
+    })
+    .populate({
+      path: 'customer',
+      select: '_id fullName email phone streetAddress city state image',
+    })
+    .populate({
+      path: 'specialist',
+      select: 'name image',
+    })
+    .sort({ date: 1, slotStart: 1 })
+    .select('-__v -isDeleted');
 
-//   return { meta, result };
-// };
+  if (!bookings?.length) {
+    throw new AppError(404, 'Booking not found');
+  }
 
-// const getBookingAppointmentsFromDB = async (query: Record<string, unknown>) => {
-//   const { vendor, date, ...filters } = query;
+  // Categorize bookings
+  const inProcess: typeof bookings = [];
+  const todayWaiting: typeof bookings = [];
+  const nextInLine: typeof bookings = [];
+  const upcoming: typeof bookings = [];
 
-//   if (!vendor || !mongoose.Types.ObjectId.isValid(vendor as string)) {
-//     throw new AppError(400, 'Invalid Vendor ID');
-//   }
+  bookings.forEach((b) => {
+    const bookingDate = new Date(b.date);
+    bookingDate.setHours(0, 0, 0, 0);
 
-//   // Base query
-//   const bookingQuery: any = { vendor, isDeleted: false };
+    const isToday = bookingDate.getTime() === today.getTime();
 
-//   // Filter by date if provided
-//   if (date) {
-//     bookingQuery.date = date;
-//   }
+    // 1️⃣ In-process (highest priority)
+    if (b.status === 'in-process') {
+      inProcess.push(b);
+      return;
+    }
 
-//   // Apply other dynamic filters
-//   Object.assign(bookingQuery, filters);
+    // 2️⃣ Today's waiting (pending + request pending)
+    if (isToday && b.status === 'pending' && b.request === 'pending') {
+      todayWaiting.push(b);
+      return;
+    }
 
-//   // Fetch bookings
-//   const bookings = await Booking.find(bookingQuery)
-//     .populate('vendor')
-//     .populate('service');
+    // 3️⃣ Next in Line (today + pending + approved + slotStart > now)
+    if (
+      isToday &&
+      b.status === 'pending' &&
+      b.request === 'approved' &&
+      b.slotStart! > now
+    ) {
+      nextInLine.push(b);
+      return;
+    }
 
-//   return bookings;
-// };
+    // 4️⃣ Upcoming (future date + approved/pending)
+    if (
+      bookingDate.getTime() > today.getTime() &&
+      ['pending', 'approved'].includes(b.status) &&
+      b.request === 'approved'
+    ) {
+      upcoming.push(b);
+      return;
+    }
+  });
 
-// const getBookingByIdFromDB = async (id: string) => {
-//   const result = await Booking.findById(id).populate('service');
+  // Sort nextInLine by earliest slotStart (queue order)
+  nextInLine.sort((a: any, b: any) => a.slotStart - b.slotStart);
 
-//   if (!result) {
-//     throw new AppError(404, 'This Booking not found');
-//   }
-
-//   if (result.isDeleted === true) {
-//     throw new AppError(400, 'This Booking has been deleted');
-//   }
-
-//   return result;
-// };
-
-// const updateBookingRequestIntoDB = async (
-//   bookingId: string,
-//   payload: TBooking,
-// ) => {
-//   // 1️⃣ Validate booking ID
-//   if (!Types.ObjectId.isValid(bookingId)) {
-//     throw new AppError(400, 'Invalid booking ID');
-//   }
-
-//   // 2️⃣ Fetch existing booking
-//   const booking = await Booking.findById(bookingId);
-//   if (!booking) {
-//     throw new AppError(404, 'Booking not found');
-//   }
-
-//   // 3️⃣ Update all provided fields
-//   for (const key in payload) {
-//     if (key === 'request') continue; // handle request separately
-//     if (Object.prototype.hasOwnProperty.call(payload, key)) {
-//       (booking as any)[key] = (payload as any)[key];
-//     }
-//   }
-
-//   // 4️⃣ Handle request if provided
-//   if (payload.request) {
-//     booking.request = {
-//       ...payload.request,
-//       vendorApproved: false, // always start as not approved
-//       updatedAt: new Date(),
-//     };
-
-//     // Optional: auto-update status if cancel request is pre-approved
-//     if (payload.request.type === 'cancel' && payload.request.vendorApproved) {
-//       booking.status = 'cancelled';
-//     }
-//   }
-
-//   // 5️⃣ Save updated booking
-//   await booking.save();
-
-//   await NotificationServices.insertNotificationIntoDB({
-//     receiver: booking?.user,
-//     message: 'Booking Cancellation Confirmation',
-//     description: `Your booking with Name: ${booking.serviceName} has been successfully cancelled. If you have any questions or require further assistance, please contact our support team.`,
-//     refference: booking?._id,
-//     model_type: ModeType.Booking,
-//   });
-
-//   await NotificationServices.insertNotificationIntoDB({
-//     receiver: booking?.vendor,
-//     message: 'Booking Cancellation Alert',
-//     description: `A booking has been cancelled. Booking Name: ${booking.serviceName}. Please update your availability accordingly. If you need further details, please access your management dashboard or contact our support team.`,
-//     refference: booking?._id,
-//     model_type: ModeType.Booking,
-//   });
-
-//   return booking;
-// };
-
-// const bookingApprovedRequestIntoDB = async (
-//   bookingId: string,
-//   vendorApproved: boolean,
-// ) => {
-//   // 1️⃣ Find the booking
-//   const booking = await Booking.findById(bookingId);
-//   if (!booking) {
-//     throw new AppError(404, 'booking not found');
-//   }
-
-//   // 2️⃣ Check if request exists
-//   if (!booking.request || booking.request.type === 'none') {
-//     throw new AppError(400, 'No request submitted for this booking');
-//   }
-
-//   // 3️⃣ Update vendorApproved and updatedAt
-//   booking.request.vendorApproved = Boolean(vendorApproved);
-
-//   // 4️⃣ Save the updated booking
-//   const updatedBooking = await booking.save();
-
-//   return updatedBooking;
-// };
-
-// const bookingAssignedToMemberIntoDB = async (
-//   id: string,
-//   payload: { assignedTo: string },
-// ) => {
-//   const isBookingExists = await Booking.findById(id);
-
-//   if (!isBookingExists) {
-//     throw new AppError(404, 'This booking is not found');
-//   }
-
-//   // Update assignedTo field (works for add or edit)
-//   const result = await Booking.findByIdAndUpdate(id, payload, { new: true });
-//   return result;
-// };
-
-// const updateBookingStatusIntoDB = async (
-//   id: string,
-//   payload: { status: string },
-// ) => {
-//   const isBookingExists = await Booking.findById(id);
-
-//   if (!isBookingExists) {
-//     throw new AppError(404, 'This booking is not found');
-//   }
-
-//   const result = await Booking.findByIdAndUpdate(id, payload, { new: true });
-//   return result;
-// };
+  return {
+    inProcess,
+    todayWaiting,
+    nextInLine,
+    upcoming,
+  };
+};
 
 export const BookingServices = {
   createBookingIntoDB,
   getAllBookingsFromDB,
-  getBookingsFromDB,
-  getBookingsByCustomerFromDB,
+  getBookingsRequestFromDB,
+  getBookingsHistoryByCustomerFromDB,
   getBookingByIdFromDB,
   bookingCompletedStatusIntoDB,
   bookingCanceledStatusIntoDB,
   bookingApprovedRequestIntoDB,
   bookingDeclineRequestIntoDB,
-  // getBookingsByEmailFromDB,
-  // getBookingByIdFromDB,
-  // updateBookingRequestIntoDB,
-  // getAllBookingByUserFromDB,
-  // getBookingAppointmentsFromDB,
-  // bookingApprovedRequestIntoDB,
-  // bookingAssignedToMemberIntoDB,
-  // updateBookingStatusIntoDB,
+  getVendorAppHomeBookingsFromDB,
 };

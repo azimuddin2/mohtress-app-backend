@@ -64,10 +64,8 @@ const initializeSocketIO = (server: HttpServer) => {
       //----------------------online array send for front end------------------------//
       io.emit('onlineUser', Array.from(onlineUser));
 
-      socket.on('message-page', async (userId, callback) => {
-        console.log('-----------------');
-        console.log({ userId });
-        console.log('-------------------');
+      socket.on('message-page', async (data, callback) => {
+        const { userId } = data;
 
         if (!userId) {
           callbackFn(callback, {
@@ -333,17 +331,17 @@ const initializeSocketIO = (server: HttpServer) => {
       });
 
       //-----------------------Typing------------------------//
-      // socket.on('typing', function (data) {
-      //   const chat = 'typing::' + data.chatId.toString();
-      //   const message = user?.name + ' is typing...';
-      //   socket.emit(chat, { message: message });
-      // });
+      socket.on('typing', function (data) {
+        const chat = 'typing::' + data.chatId.toString();
+        const message = user?.name + ' is typing...';
+        socket.emit(chat, { message: message });
+      });
 
-      // socket.on('stopTyping', function (data) {
-      //   const chat = 'stopTyping::' + data.chatId.toString();
-      //   const message = user?.name + ' is stop typing...';
-      //   socket.emit(chat, { message: message });
-      // });
+      socket.on('stopTyping', function (data) {
+        const chat = 'stopTyping::' + data.chatId.toString();
+        const message = user?.name + ' is stop typing...';
+        socket.emit(chat, { message: message });
+      });
 
       //-----------------------Seen All------------------------//
       socket.on('message-notification', async ({}, callback) => {
