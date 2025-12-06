@@ -71,9 +71,6 @@ const userSchema = new Schema<TUser, UserModel>(
     passwordChangeAt: {
       type: Date,
     },
-    referralCode: {
-      type: Number,
-    },
     gender: {
       type: String,
       enum: ['male', 'female', 'other'],
@@ -167,6 +164,20 @@ const userSchema = new Schema<TUser, UserModel>(
         type: String,
         required: false,
       },
+    },
+
+    isReferral: {
+      type: Boolean,
+      default: false,
+    },
+    referredBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    referralCode: {
+      type: String,
+      default: null,
     },
   },
   {

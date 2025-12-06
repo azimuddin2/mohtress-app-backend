@@ -227,7 +227,10 @@ const getBookingsRequestFromDB = async (query: Record<string, unknown>) => {
   return result;
 };
 
-const getBookingsHistoryByCustomerFromDB = async (userId: string, status: string) => {
+const getBookingsHistoryByCustomerFromDB = async (
+  userId: string,
+  status: string,
+) => {
   const user = await User.findById(userId).select('role email');
 
   if (!user?.email) {

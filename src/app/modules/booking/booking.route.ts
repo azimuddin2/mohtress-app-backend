@@ -32,7 +32,11 @@ router.get(
 
 router.get('/all', auth('admin'), BookingControllers.getAllBookings);
 
-router.get('/', auth('customer'), BookingControllers.getBookingsHistoryByCustomer);
+router.get(
+  '/',
+  auth('customer'),
+  BookingControllers.getBookingsHistoryByCustomer,
+);
 
 router.get('/:id', BookingControllers.getBookingById);
 

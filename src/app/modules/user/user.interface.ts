@@ -21,7 +21,6 @@ export type TUser = {
   password: string;
   needsPasswordChange: boolean;
   passwordChangeAt?: Date;
-  referralCode?: string;
   gender?: TGender;
   selectSalon?: string;
   role: TRole;
@@ -49,6 +48,11 @@ export type TUser = {
     coordinates: [number, number]; // [longitude, latitude]
     streetAddress?: string;
   };
+
+  // Referral
+  referralCode?: string;
+  isReferral?: boolean;
+  referredBy?: string;
 };
 
 export interface UserModel extends Model<TUser> {
