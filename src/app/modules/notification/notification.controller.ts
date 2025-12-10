@@ -9,7 +9,7 @@ import AppError from '../../errors/AppError';
 const getAllNotification = catchAsync(async (req: Request, res: Response) => {
   const query = { ...req.query };
   query['receiver'] = req.user.userId;
-  const result = await notificationServices.getNotificationFromDb(query);
+  const result = await notificationServices.getNotificationFromDB(query);
   sendResponse(res, {
     statusCode: 200,
     success: true,

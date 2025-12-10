@@ -11,6 +11,7 @@ import { Message } from './app/modules/message/message.model';
 import AppError from './app/errors/AppError';
 import getUserDetailsFromToken from './app/helpers/getUserDetailsFromToken';
 import callbackFn from './app/utils/callbackFn';
+import { sendNotification } from './app/modules/notification/notification.utils';
 
 const initializeSocketIO = (server: HttpServer) => {
   const io = new Server(server, {
@@ -112,19 +113,19 @@ const initializeSocketIO = (server: HttpServer) => {
           io.to(userSocket).emit('message', getPreMessage || []);
 
           // Notification
-          // const allUnReaddMessage = await Message.countDocuments({
-          //   receiver: user?._id,
-          //   seen: false,
-          // });
-          // const variable = 'new-notifications::' + user?._id;
-          // io.emit(variable, allUnReaddMessage);
+          const allUnReaddMessage = await Message.countDocuments({
+            receiver: user?._id,
+            seen: false,
+          });
+          const variable = 'new-notifications::' + user?._id;
+          io.emit(variable, allUnReaddMessage);
 
-          // const allUnReaddMessage2 = await Message.countDocuments({
-          //   receiver: userId,
-          //   seen: false,
-          // });
-          // const variable2 = 'new-notifications::' + userId;
-          // io.emit(variable2, allUnReaddMessage2);
+          const allUnReaddMessage2 = await Message.countDocuments({
+            receiver: userId,
+            seen: false,
+          });
+          const variable2 = 'new-notifications::' + userId;
+          io.emit(variable2, allUnReaddMessage2);
 
           //end Notification//
         } catch (error: any) {
@@ -252,10 +253,6 @@ const initializeSocketIO = (server: HttpServer) => {
         try {
           payload.sender = user?._id;
 
-          console.log('---------------------------');
-          console.log(user.id);
-          console.log('-------------------------');
-
           const alreadyExists = await Chat.findOne({
             participants: { $all: [payload.sender, payload.receiver] },
           }).populate(['participants']);
@@ -299,19 +296,18 @@ const initializeSocketIO = (server: HttpServer) => {
           );
           io.to(userSocket).emit('chat-list', ChatListSender);
 
-          // Notification
-          // const allUnReaddMessage = await Message.countDocuments({
-          //   receiver: result.sender,
-          //   seen: false,
-          // });
-          // const variable = 'new-notifications::' + result.sender;
-          // io.emit(variable, allUnReaddMessage);
-          // const allUnReaddMessage2 = await Message.countDocuments({
-          //   receiver: result.receiver,
-          //   seen: false,
-          // });
-          // const variable2 = 'new-notifications::' + result.receiver;
-          // io.emit(variable2, allUnReaddMessage2);
+          //  🔔 Send Firebase Notification
+          // const receiverUser = await User.findById(result.receiver);
+          // if (receiverUser?.fcmToken) {
+          //   sendNotification([receiverUser.fcmToken], {
+          //     title: `New Message`,
+          //     message: payload.text || "You have a new message",
+          //     receiver: receiverUser._id as any,
+          //     receiverEmail: receiverUser.email,
+          //     receiverRole: receiverUser.role,
+          //     sender: payload.sender,
+          //   });
+          // }
 
           //end Notification//
           callbackFn(callback, {
@@ -344,23 +340,23 @@ const initializeSocketIO = (server: HttpServer) => {
       // });
 
       //-----------------------Seen All------------------------//
-      // socket.on('message-notification', async ({}, callback) => {
-      //   try {
-      //     const allUnReaddMessage = await Message.countDocuments({
-      //       receiver: user?._id,
-      //       seen: false,
-      //     });
-      //     const variable = 'new-notifications::' + user?._id;
-      //     io.emit(variable, allUnReaddMessage);
-      //     callbackFn(callback, { success: true, message: allUnReaddMessage });
-      //   } catch (error) {
-      //     callbackFn(callback, {
-      //       statusCode: httpStatus.INTERNAL_SERVER_ERROR,
-      //       success: false,
-      //       message: 'Failed to retrieve notifications',
-      //     });
-      //   }
-      // });
+      socket.on('message-notification', async ({}, callback) => {
+        try {
+          const allUnReaddMessage = await Message.countDocuments({
+            receiver: user?._id,
+            seen: false,
+          });
+          const variable = 'new-notifications::' + user?._id;
+          io.emit(variable, allUnReaddMessage);
+          callbackFn(callback, { success: true, message: allUnReaddMessage });
+        } catch (error) {
+          callbackFn(callback, {
+            statusCode: httpStatus.INTERNAL_SERVER_ERROR,
+            success: false,
+            message: 'Failed to retrieve notifications',
+          });
+        }
+      });
 
       //-----------------------Disconnect------------------------//
       socket.on('disconnect', () => {

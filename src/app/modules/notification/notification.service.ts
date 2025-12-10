@@ -3,7 +3,7 @@ import { sendEmail } from '../../utils/sendEmail';
 import { INotification } from './notification.interface';
 import Notification from './notification.model';
 
-const getNotificationFromDb = async (query: Record<string, any>) => {
+const getNotificationFromDB = async (query: Record<string, any>) => {
   const { receiver } = query;
   const notificationQuery = Notification.find({ isRead: false, receiver });
 
@@ -113,7 +113,7 @@ const pushNotificationUser = async (payload: any, role: string) => {
 };
 
 export const notificationServices = {
-  getNotificationFromDb,
+  getNotificationFromDB,
   updateNotification,
   makeMeRead,
   makeReadAll,

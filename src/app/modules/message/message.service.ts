@@ -9,10 +9,6 @@ import QueryBuilder from '../../builder/QueryBuilder';
 import { deleteFromS3 } from '../../utils/awsS3FileUploader';
 
 const createMessages = async (payload: TMessage) => {
-  console.log('---------------------------');
-  console.log(payload);
-  console.log('-------------------------');
-
   const alreadyExists = await Chat.findOne({
     participants: { $all: [payload.sender, payload.receiver] },
   }).populate(['participants']);

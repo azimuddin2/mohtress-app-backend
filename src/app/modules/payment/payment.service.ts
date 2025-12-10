@@ -8,6 +8,7 @@ import StripePaymentService from '../../class/stripe';
 import QueryBuilder from '../../builder/QueryBuilder';
 import { TPayment } from './payment.interface';
 import { Booking } from '../booking/booking.model';
+import { sendNotification } from '../notification/notification.utils';
 
 // 🔹 Helper → calculate commission split (10% admin, 90% vendor)
 const calculateAmounts = (price: number) => ({
@@ -188,13 +189,24 @@ const confirmPayment = async (query: Record<string, any>) => {
     }
 
     // Vendor balance increment
-    await User.findByIdAndUpdate(
+    const user = await User.findByIdAndUpdate(
       payment.vendor,
       {
         $inc: { balance: payment.vendorAmount },
       },
       { session },
     );
+
+    if (user?.fcmToken) {
+      sendNotification([user?.fcmToken], {
+        title: `Payment successfully`,
+        message: `Your payment is completed successfully!`,
+        receiver: user._id as any,
+        receiverEmail: user.email,
+        receiverRole: user?.role as string,
+        sender: user._id as any,
+      });
+    }
 
     await session.commitTransaction();
 

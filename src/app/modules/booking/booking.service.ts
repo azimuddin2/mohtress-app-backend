@@ -10,6 +10,7 @@ import mongoose from 'mongoose';
 import QueryBuilder from '../../builder/QueryBuilder';
 import { bookingSearchableFields } from './booking.constant';
 import { getCurrentMinutes } from './booking.utils';
+import { sendNotification } from '../notification/notification.utils';
 
 const createBookingIntoDB = async (payload: TBooking, files: any) => {
   const { customer, service, vendor, date, time, specialist, serviceType } =
@@ -159,10 +160,33 @@ const createBookingIntoDB = async (payload: TBooking, files: any) => {
     throw new AppError(400, 'At least one image is required');
   }
 
-  // -------------------------------
-  // 1️⃣1️⃣ Save Booking
-  // -------------------------------
-  return await Booking.create(payload);
+  // 1️⃣1️⃣ Booking save
+  const booking = await Booking.create(payload);
+
+  // 1️⃣2️⃣ Notification (customer + vendor)
+  if (customerExists?.fcmToken) {
+    await sendNotification([customerExists.fcmToken], {
+      title: 'Booking Confirmed',
+      message: `Your booking for service ${serviceExists.name} on ${payload.date} at ${payload.time} is confirmed!`,
+      receiver: customerExists._id as any,
+      receiverEmail: customerExists.email,
+      receiverRole: customerExists.role,
+      sender: vendorExists._id as any,
+    });
+  }
+
+  if (vendorExists?.fcmToken) {
+    await sendNotification([vendorExists.fcmToken], {
+      title: 'New Booking Received',
+      message: `You have a new booking from ${customerExists.email} on ${payload.date} at ${payload.time}`,
+      receiver: vendorExists._id as any,
+      receiverEmail: vendorExists.email,
+      receiverRole: vendorExists.role,
+      sender: customerExists._id as any,
+    });
+  }
+
+  return booking;
 };
 
 const getAllBookingsFromDB = async (query: Record<string, unknown>) => {
@@ -348,13 +372,46 @@ const bookingCompletedStatusIntoDB = async (
   id: string,
   payload: { status: string },
 ) => {
-  const isBookingExists = await Booking.findById(id);
+  // 1️⃣ Fetch booking with customer & vendor info
+  const booking = await Booking.findById(id)
+    .populate('customer', '_id email role fcmToken')
+    .populate('vendor', '_id email role fcmToken');
 
-  if (!isBookingExists) {
+  if (!booking) {
     throw new AppError(404, 'This booking is not found');
   }
 
+  // 2️⃣ Update booking status
   const result = await Booking.findByIdAndUpdate(id, payload, { new: true });
+
+  // 3️⃣ Send Notifications
+  const customer = booking.customer as any;
+  const vendor = booking.vendor as any;
+
+  // Customer Notification
+  if (customer?.fcmToken) {
+    await sendNotification([customer.fcmToken], {
+      title: 'Booking Completed',
+      message: `Your booking for service ${booking.service} on ${booking.date} at ${booking.time} is completed!`,
+      receiver: customer._id,
+      receiverEmail: customer.email,
+      receiverRole: customer.role,
+      sender: vendor._id,
+    });
+  }
+
+  // Vendor Notification (optional)
+  if (vendor?.fcmToken) {
+    await sendNotification([vendor.fcmToken], {
+      title: 'Booking Completed',
+      message: `The booking from ${customer.email} on ${booking.date} at ${booking.time} is marked as completed.`,
+      receiver: vendor._id,
+      receiverEmail: vendor.email,
+      receiverRole: vendor.role,
+      sender: customer._id,
+    });
+  }
+
   return result;
 };
 
@@ -362,13 +419,46 @@ const bookingCanceledStatusIntoDB = async (
   id: string,
   payload: { status: string },
 ) => {
-  const isBookingExists = await Booking.findById(id);
+  // 1️⃣ Fetch booking with customer & vendor
+  const booking = await Booking.findById(id)
+    .populate('customer', '_id email role fcmToken')
+    .populate('vendor', '_id email role fcmToken');
 
-  if (!isBookingExists) {
+  if (!booking) {
     throw new AppError(404, 'This booking is not found');
   }
 
+  // 2️⃣ Update booking status
   const result = await Booking.findByIdAndUpdate(id, payload, { new: true });
+
+  // 3️⃣ Send Notifications
+  const customer = booking.customer as any;
+  const vendor = booking.vendor as any;
+
+  // Customer Notification
+  if (customer?.fcmToken) {
+    await sendNotification([customer.fcmToken], {
+      title: 'Booking Canceled',
+      message: `Your booking for service ${booking.service} on ${booking.date} at ${booking.time} has been canceled.`,
+      receiver: customer._id,
+      receiverEmail: customer.email,
+      receiverRole: customer.role,
+      sender: vendor._id,
+    });
+  }
+
+  // Vendor Notification (optional)
+  if (vendor?.fcmToken) {
+    await sendNotification([vendor.fcmToken], {
+      title: 'Booking Canceled',
+      message: `The booking from ${customer.email} on ${booking.date} at ${booking.time} has been canceled.`,
+      receiver: vendor._id,
+      receiverEmail: vendor.email,
+      receiverRole: vendor.role,
+      sender: customer._id,
+    });
+  }
+
   return result;
 };
 
