@@ -466,8 +466,10 @@ const bookingApprovedRequestIntoDB = async (
   id: string,
   payload: { request: 'approved' | 'pending' | 'decline' },
 ) => {
-  // 1️⃣ Check if the booking exists
-  const booking = await Booking.findById(id);
+  // 1️⃣ Fetch booking with customer & vendor
+  const booking = await Booking.findById(id)
+    .populate('customer', '_id email role fcmToken')
+    .populate('vendor', '_id email role fcmToken');
 
   if (!booking) {
     throw new AppError(404, 'This booking is not found');
@@ -499,20 +501,86 @@ const bookingApprovedRequestIntoDB = async (
     { new: true },
   );
 
+  // 3️⃣ Send Notifications
+  const customer = booking.customer as any;
+  const vendor = booking.vendor as any;
+
+  // Customer Notification
+  if (customer?.fcmToken) {
+    await sendNotification([customer.fcmToken], {
+      title: 'Booking Approved',
+      message: `Your booking for service ${booking.service} on ${booking.date} at ${booking.time} has been approved.`,
+      receiver: customer._id,
+      receiverEmail: customer.email,
+      receiverRole: customer.role,
+      sender: vendor._id,
+    });
+  }
+
+  // Vendor Notification (optional)
+  if (vendor?.fcmToken) {
+    await sendNotification([vendor.fcmToken], {
+      title: 'Booking Approved',
+      message: `You approved the booking from ${customer.email} on ${booking.date} at ${booking.time}.`,
+      receiver: vendor._id,
+      receiverEmail: vendor.email,
+      receiverRole: vendor.role,
+      sender: customer._id,
+    });
+  }
+
   return result;
 };
 
 const bookingDeclineRequestIntoDB = async (
   id: string,
-  payload: { request: string },
+  payload: { request: 'decline' | 'pending' | 'approved' },
 ) => {
-  const isBookingExists = await Booking.findById(id);
+  // 1️⃣ Fetch booking
+  const booking = await Booking.findById(id)
+    .populate('customer', '_id email role fcmToken')
+    .populate('vendor', '_id email role fcmToken');
 
-  if (!isBookingExists) {
+  if (!booking) {
     throw new AppError(404, 'This booking is not found');
   }
 
+  // 2️⃣ Prevent declining an already approved booking (optional)
+  if (booking.request === 'approved' && payload.request === 'decline') {
+    throw new AppError(400, 'Cannot decline an already approved booking');
+  }
+
+  // 3️⃣ Update booking request field
   const result = await Booking.findByIdAndUpdate(id, payload, { new: true });
+
+  // 4️⃣ Send Notifications
+  const customer = booking.customer as any;
+  const vendor = booking.vendor as any;
+
+  // Customer Notification
+  if (customer?.fcmToken) {
+    await sendNotification([customer.fcmToken], {
+      title: 'Booking Declined',
+      message: `Your booking for service ${booking.service} on ${booking.date} at ${booking.time} has been declined.`,
+      receiver: customer._id,
+      receiverEmail: customer.email,
+      receiverRole: customer.role,
+      sender: vendor._id,
+    });
+  }
+
+  // Vendor Notification (optional)
+  if (vendor?.fcmToken) {
+    await sendNotification([vendor.fcmToken], {
+      title: 'Booking Declined',
+      message: `The booking request from ${customer.email} on ${booking.date} at ${booking.time} has been declined.`,
+      receiver: vendor._id,
+      receiverEmail: vendor.email,
+      receiverRole: vendor.role,
+      sender: customer._id,
+    });
+  }
+
   return result;
 };
 

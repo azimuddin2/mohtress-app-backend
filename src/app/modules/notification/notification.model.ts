@@ -8,54 +8,40 @@ const NotificationSchema = new Schema<INotification>(
       ref: 'User',
       default: '',
     },
-
     receiver: {
       type: Schema.Types.ObjectId,
       ref: 'User',
       required: true,
     },
-
     receiverEmail: {
       type: String,
       default: '',
     },
-
     receiverRole: {
       type: String,
       enum: ['customer', 'admin', 'owner', 'freelancer'],
       required: true,
     },
-    product: {
-      type: Schema.Types.ObjectId,
-      ref: 'products',
-      default: null,
-    },
-
     type: {
       type: String,
       default: 'text',
     },
-
     title: {
       type: String,
       required: true,
     },
-
     message: {
       type: String,
       required: true,
     },
-
     isRead: {
       type: Boolean,
       default: false,
     },
-
     link: {
       type: String,
       default: null,
     },
-
     fcmToken: {
       type: String,
     },
