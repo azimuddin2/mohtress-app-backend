@@ -1,19 +1,19 @@
 import { Router } from 'express';
-import { notificationController } from './notification.controller';
 import auth from '../../middlewares/auth';
 import { USER_ROLE } from '../user/user.constant';
+import { NotificationController } from './notification.controller';
 
 const router = Router();
 
 router.get(
-  '/all-notification',
+  '/',
   auth(
     USER_ROLE.customer,
     USER_ROLE.owner,
     USER_ROLE.freelancer,
     USER_ROLE.admin,
   ),
-  notificationController.getAllNotification,
+  NotificationController.getAllNotification,
 );
 
 router.put(
@@ -24,7 +24,7 @@ router.put(
     USER_ROLE.freelancer,
     USER_ROLE.admin,
   ),
-  notificationController.makeRead,
+  NotificationController.makeRead,
 );
 
 router.put(
@@ -35,18 +35,13 @@ router.put(
     USER_ROLE.freelancer,
     USER_ROLE.admin,
   ),
-  notificationController.makeReadAll,
+  NotificationController.makeReadAll,
 );
 
 router.get(
-  '/admin-all-notification',
-  auth(
-    USER_ROLE.customer,
-    USER_ROLE.owner,
-    USER_ROLE.freelancer,
-    USER_ROLE.admin,
-  ),
-  notificationController.getAdminAllNotification,
+  '/admin-notifications',
+  auth(USER_ROLE.admin),
+  NotificationController.getAdminAllNotification,
 );
 
 router.post(
@@ -57,7 +52,7 @@ router.post(
     USER_ROLE.freelancer,
     USER_ROLE.admin,
   ),
-  notificationController.pushNotificationUser,
+  NotificationController.pushNotificationUser,
 );
 
 export const NotificationRoutes = router;

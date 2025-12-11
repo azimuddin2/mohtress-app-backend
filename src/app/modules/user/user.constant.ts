@@ -5,9 +5,16 @@ export const USER_ROLE = {
   owner: 'owner',
   freelancer: 'freelancer',
   admin: 'admin',
+  'sub-admin': 'sub-admin',
 } as const;
 
-export const UserRole: TRole[] = ['customer', 'owner', 'freelancer', 'admin'];
+export const UserRole: TRole[] = [
+  'customer',
+  'owner',
+  'freelancer',
+  'admin',
+  'sub-admin',
+];
 
 export const UserStatus: TStatus[] = ['ongoing', 'confirmed', 'blocked'];
 

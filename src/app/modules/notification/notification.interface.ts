@@ -11,4 +11,4 @@ export interface INotification {
   title?: string;
   isRead?: boolean;
   link?: string;
-};
+}

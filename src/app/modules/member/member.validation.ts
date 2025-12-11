@@ -16,13 +16,11 @@ const createMemberValidationSchema = z.object({
 
     phone: z.string({ required_error: 'Phone number is required' }),
 
-    role: z.string({
-      required_error: 'Role is required',
-    }),
-
-    defaultScreen: z.string({
-      required_error: 'Default screen is required',
-    }),
+    role: z
+      .string({
+        required_error: 'Role is required',
+      })
+      .optional(),
   }),
 });
 
@@ -50,12 +48,6 @@ const updateMemberValidationSchema = z.object({
     role: z
       .string({
         required_error: 'Role is required',
-      })
-      .optional(),
-
-    defaultScreen: z
-      .string({
-        required_error: 'Default screen is required',
       })
       .optional(),
   }),

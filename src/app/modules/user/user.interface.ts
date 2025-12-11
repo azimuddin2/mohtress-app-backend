@@ -3,7 +3,7 @@ import { USER_ROLE } from './user.constant';
 import { TOwnerRegistration } from '../ownerRegistration/ownerRegistration.interface';
 import { TFreelancerRegistration } from '../freelancerRegistration/freelancerRegistration.interface';
 
-export type TRole = 'customer' | 'owner' | 'freelancer' | 'admin';
+export type TRole = 'customer' | 'owner' | 'freelancer' | 'admin' | 'sub-admin';
 
 export type TStatus = 'ongoing' | 'confirmed' | 'blocked';
 

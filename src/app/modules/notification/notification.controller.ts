@@ -3,13 +3,14 @@ import httpStatus from 'http-status';
 import catchAsync from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import Notification from './notification.model';
-import { notificationServices } from './notification.service';
 import AppError from '../../errors/AppError';
+import { NotificationServices } from './notification.service';
 
 const getAllNotification = catchAsync(async (req: Request, res: Response) => {
   const query = { ...req.query };
   query['receiver'] = req.user.userId;
-  const result = await notificationServices.getNotificationFromDB(query);
+
+  const result = await NotificationServices.getNotificationFromDB(query);
   sendResponse(res, {
     statusCode: 200,
     success: true,
@@ -35,7 +36,10 @@ const makeRead = catchAsync(async (req: Request, res: Response) => {
     );
   }
 
-  const result = await notificationServices.makeMeRead(id, req.user.userId);
+  const result = await NotificationServices.makeMeReadNotification(
+    id,
+    req.user.userId,
+  );
   sendResponse(res, {
     statusCode: 200,
     success: true,
@@ -45,7 +49,9 @@ const makeRead = catchAsync(async (req: Request, res: Response) => {
 });
 
 const makeReadAll = catchAsync(async (req: Request, res: Response) => {
-  const result = await notificationServices.makeReadAll(req.user.userId);
+  const result = await NotificationServices.makeReadAllNotification(
+    req.user.userId,
+  );
   sendResponse(res, {
     statusCode: 200,
     success: true,
@@ -56,7 +62,7 @@ const makeReadAll = catchAsync(async (req: Request, res: Response) => {
 
 const getAdminAllNotification = catchAsync(
   async (req: Request, res: Response) => {
-    const result = await notificationServices.getAdminAllNotification(
+    const result = await NotificationServices.getAdminAllNotification(
       req.query,
     );
     sendResponse(res, {
@@ -69,7 +75,7 @@ const getAdminAllNotification = catchAsync(
 );
 
 const pushNotificationUser = catchAsync(async (req: Request, res: Response) => {
-  const result = await notificationServices.pushNotificationUser(
+  const result = await NotificationServices.pushNotificationUser(
     req.body,
     req.user?.role as string,
   );
@@ -81,7 +87,7 @@ const pushNotificationUser = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-export const notificationController = {
+export const NotificationController = {
   getAllNotification,
   makeRead,
   makeReadAll,

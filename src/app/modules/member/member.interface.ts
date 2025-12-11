@@ -4,6 +4,5 @@ export type TMember = {
   email: string;
   phone: string;
   role: string;
-  defaultScreen: string;
   isDeleted: boolean;
 };

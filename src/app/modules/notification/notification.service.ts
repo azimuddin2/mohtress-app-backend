@@ -1,10 +1,16 @@
+import mongoose from 'mongoose';
 import QueryBuilder from '../../builder/QueryBuilder';
 import { sendEmail } from '../../utils/sendEmail';
-import { INotification } from './notification.interface';
 import Notification from './notification.model';
+import AppError from '../../errors/AppError';
 
 const getNotificationFromDB = async (query: Record<string, any>) => {
   const { receiver } = query;
+
+  if (!receiver || !mongoose.Types.ObjectId.isValid(receiver as string)) {
+    throw new AppError(400, 'Invalid Receiver ID');
+  }
+
   const notificationQuery = Notification.find({ isRead: false, receiver });
 
   const queryModel = new QueryBuilder(notificationQuery, query)
@@ -14,23 +20,14 @@ const getNotificationFromDB = async (query: Record<string, any>) => {
     .paginate();
   const data: any = await queryModel.modelQuery;
   const meta = await queryModel.countTotal();
+
   return {
     meta,
     data,
   };
 };
 
-const updateNotification = async (
-  id: string,
-  payload: Partial<INotification>,
-) => {
-  const result = await Notification.findByIdAndUpdate(id, payload, {
-    new: true,
-  });
-  return result;
-};
-
-const makeMeRead = async (id: string, user: string) => {
+const makeMeReadNotification = async (id: string, user: string) => {
   const result = await Notification.findOneAndUpdate(
     { _id: id, receiver: user },
     { isRead: true },
@@ -41,7 +38,7 @@ const makeMeRead = async (id: string, user: string) => {
   return result;
 };
 
-const makeReadAll = async (user: string) => {
+const makeReadAllNotification = async (user: string) => {
   const result = await Notification.updateMany(
     { receiver: user, isRead: true },
     {
@@ -58,8 +55,10 @@ const getAdminAllNotification = async (query: Record<string, any>) => {
     .sort()
     .fields()
     .paginate();
+
   const data: any = await notificationQuery.modelQuery;
   const meta = await notificationQuery.countTotal();
+
   return {
     meta,
     data,
@@ -112,11 +111,10 @@ const pushNotificationUser = async (payload: any, role: string) => {
   await sendEmail(payload.email, payload.title, htmlContent);
 };
 
-export const notificationServices = {
+export const NotificationServices = {
   getNotificationFromDB,
-  updateNotification,
-  makeMeRead,
-  makeReadAll,
+  makeMeReadNotification,
+  makeReadAllNotification,
   getAdminAllNotification,
   pushNotificationUser,
 };
