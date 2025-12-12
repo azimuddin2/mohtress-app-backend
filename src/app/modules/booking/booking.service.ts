@@ -11,6 +11,7 @@ import QueryBuilder from '../../builder/QueryBuilder';
 import { bookingSearchableFields } from './booking.constant';
 import { getCurrentMinutes } from './booking.utils';
 import { sendNotification } from '../notification/notification.utils';
+import dayjs from 'dayjs';
 
 const createBookingIntoDB = async (payload: TBooking, files: any) => {
   const { customer, service, vendor, date, time, specialist, serviceType } =
@@ -673,16 +674,89 @@ const getVendorAppHomeBookingsFromDB = async (
   next.sort((a: any, b: any) => a.slotStart - b.slotStart);
 
   // 4️⃣ Next Line = first 4
-  const nextLine = next.slice(0, 1);
+  const nextLine = next.slice(0, 4);
 
   // 5️⃣ Waiting Today = remaining today's future bookings
-  const waitingToday = next.slice(1);
+  const waitingToday = next.slice(4);
 
   return {
     servicingNow,
     nextLine,
     waitingToday,
     upcoming,
+  };
+};
+
+const getBookingServicingNowPanelFromDB = async (
+  query: Record<string, unknown>,
+) => {
+  const nowMinutes = getCurrentMinutes();
+  const today = dayjs().format('YYYY-MM-DD');
+
+  // Base Mongoose query
+  const mongooseQuery = Booking.find({
+    isDeleted: false,
+    request: 'approved',
+    date: { $gte: today },
+  })
+    .populate('service')
+    .populate({
+      path: 'vendor',
+      select:
+        '_id fullName email phone streetAddress city state image location',
+    })
+    .populate({
+      path: 'customer',
+      select: '_id fullName email phone streetAddress city state image',
+    })
+    .populate({
+      path: 'specialist',
+      select: 'name image',
+    });
+
+  // Apply QueryBuilder filters, search, pagination
+  const bookingQuery = new QueryBuilder(mongooseQuery, query)
+    .search(bookingSearchableFields)
+    .filter()
+    .sort()
+    .paginate()
+    .fields();
+
+  const meta = await bookingQuery.countTotal();
+  const results = await bookingQuery.modelQuery;
+
+  const finalList: any[] = [];
+
+  results.forEach((doc: any) => {
+    const booking = doc.toObject ? doc.toObject() : { ...doc };
+    const bookingDate = dayjs(booking.date);
+    const start = booking.slotStart ?? -1;
+    const end = booking.slotEnd ?? -1;
+
+    // Skip past bookings
+    if (bookingDate.isBefore(today, 'day')) {
+      return;
+    }
+
+    // Determine dashboardStatus
+    if (
+      bookingDate.isSame(today, 'day') &&
+      start <= nowMinutes &&
+      end >= nowMinutes
+    ) {
+      booking.dashboardStatus = 'servicingNow';
+    } else if (bookingDate.isSame(today, 'day') && start > nowMinutes) {
+      booking.dashboardStatus = 'nextLine';
+    } else if (bookingDate.isAfter(today, 'day')) {
+      booking.dashboardStatus = 'upcoming';
+    }
+
+    finalList.push(booking);
+  });
+
+  return {
+    meta,
+    result: finalList,
   };
 };
 
@@ -698,4 +772,5 @@ export const BookingServices = {
   bookingApprovedRequestIntoDB,
   bookingDeclineRequestIntoDB,
   getVendorAppHomeBookingsFromDB,
+  getBookingServicingNowPanelFromDB,
 };

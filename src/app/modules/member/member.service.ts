@@ -128,45 +128,100 @@ const getMemberByIdFromDB = async (id: string) => {
 };
 
 const updateMemberIntoDB = async (id: string, payload: Partial<TMember>) => {
-  const isMemberExists = await Member.findById(id);
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-  if (!isMemberExists) {
-    throw new AppError(404, 'This member not exists');
+  try {
+    const { firstName, lastName, phone } = payload;
+
+    // 1️⃣ Find member
+    const isMemberExists = await Member.findById(id);
+    if (!isMemberExists) {
+      throw new AppError(404, 'Member does not exist');
+    }
+
+    if (isMemberExists.isDeleted) {
+      throw new AppError(400, 'This member has been deleted');
+    }
+
+    // 2️⃣ Update Member fields
+    const updatedMember = await Member.findByIdAndUpdate(
+      id,
+      { firstName, lastName, phone },
+      { new: true, runValidators: true, session },
+    );
+
+    if (!updatedMember) {
+      throw new AppError(400, 'Member update failed');
+    }
+
+    // 3️⃣ Update User table (because create updates both)
+    const updateUserData = {
+      fullName: `${firstName} ${lastName}`,
+      phone,
+    };
+
+    await User.findOneAndUpdate(
+      { email: isMemberExists.email },
+      updateUserData,
+      { session },
+    );
+
+    // 4️⃣ Commit transaction
+    await session.commitTransaction();
+    session.endSession();
+
+    return updatedMember;
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
   }
-
-  if (isMemberExists.isDeleted === true) {
-    throw new AppError(400, 'This member has been deleted');
-  }
-
-  const updatedMember = await Member.findByIdAndUpdate(id, payload, {
-    new: true,
-    runValidators: true,
-  });
-
-  if (!updatedMember) {
-    throw new AppError(400, 'Member update failed');
-  }
-
-  return updatedMember;
 };
 
 const deleteMemberFromDB = async (id: string) => {
-  const isMemberExists = await Member.findById(id);
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-  if (!isMemberExists) {
-    throw new AppError(404, 'Member not found');
+  try {
+    // 1️⃣ Check Member exists
+    const isMemberExists = await Member.findById(id);
+    if (!isMemberExists) {
+      throw new AppError(404, 'Member not found');
+    }
+
+    if (isMemberExists.isDeleted === true) {
+      throw new AppError(400, 'Member already deleted');
+    }
+
+    // 2️⃣ Soft delete Member (Transaction)
+    const deletedMember = await Member.findByIdAndUpdate(
+      id,
+      { isDeleted: true },
+      { new: true, session },
+    );
+
+    if (!deletedMember) {
+      throw new AppError(400, 'Failed to delete member');
+    }
+
+    // 3️⃣ Soft delete linked User (Transaction)
+    await User.findOneAndUpdate(
+      { email: isMemberExists.email },
+      { isDeleted: true },
+      { session },
+    );
+
+    // 4️⃣ Commit transaction
+    await session.commitTransaction();
+    session.endSession();
+
+    return deletedMember;
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
   }
-
-  const result = await Member.findByIdAndUpdate(
-    id,
-    { isDeleted: true },
-    { new: true },
-  );
-  if (!result) {
-    throw new AppError(400, 'Failed to delete member');
-  }
-
-  return result;
 };
 
 export const MemberServices = {

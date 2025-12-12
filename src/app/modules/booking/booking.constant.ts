@@ -20,9 +20,8 @@ export const BookingRequest: TBookingRequest[] = [
 // ];
 
 export const bookingSearchableFields = [
-  'name',
   'email',
-  'phone',
-  'status',
-  'serviceName',
+  'customer.fullName',
+  'vendor.fullName',
+  'service.name',
 ];

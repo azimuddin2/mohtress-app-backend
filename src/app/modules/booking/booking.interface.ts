@@ -47,6 +47,7 @@ export type TBooking = {
   totalPrice: number;
 
   status: TBookingStatus;
+  dashboardStatus?: 'servicingNow' | 'nextLine' | 'upcoming';
 
   request: TBookingRequest;
   isPaid: boolean;

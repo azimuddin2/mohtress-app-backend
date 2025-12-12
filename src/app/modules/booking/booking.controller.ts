@@ -160,6 +160,19 @@ const getVendorAppHomeBookings = catchAsync(async (req, res) => {
   });
 });
 
+const getBookingServicingNowPanel = catchAsync(async (req, res) => {
+  const result = await BookingServices.getBookingServicingNowPanelFromDB(
+    req.query,
+  );
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: 'Bookings Now Panel retrieved successfully',
+    data: result,
+  });
+});
+
 export const BookingControllers = {
   createBooking,
   getAllBookings,
@@ -172,4 +185,5 @@ export const BookingControllers = {
   bookingApprovedRequest,
   bookingDeclineRequest,
   getVendorAppHomeBookings,
+  getBookingServicingNowPanel,
 };

@@ -25,6 +25,12 @@ router.get(
 );
 
 router.get(
+  '/servicing-now-panel',
+  auth('admin', 'sub-admin'),
+  BookingControllers.getBookingServicingNowPanel,
+);
+
+router.get(
   '/request',
   auth('owner', 'freelancer'),
   BookingControllers.getBookingsRequest,
