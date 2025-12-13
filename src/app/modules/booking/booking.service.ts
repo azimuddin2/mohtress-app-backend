@@ -173,6 +173,7 @@ const createBookingIntoDB = async (payload: TBooking, files: any) => {
       receiverEmail: customerExists.email,
       receiverRole: customerExists.role,
       sender: vendorExists._id as any,
+      type: 'reminder',
     });
   }
 
@@ -184,6 +185,7 @@ const createBookingIntoDB = async (payload: TBooking, files: any) => {
       receiverEmail: vendorExists.email,
       receiverRole: vendorExists.role,
       sender: customerExists._id as any,
+      type: 'booking',
     });
   }
 
@@ -398,6 +400,7 @@ const bookingCompletedStatusIntoDB = async (
       receiverEmail: customer.email,
       receiverRole: customer.role,
       sender: vendor._id,
+      type: 'booking',
     });
   }
 
@@ -410,6 +413,7 @@ const bookingCompletedStatusIntoDB = async (
       receiverEmail: vendor.email,
       receiverRole: vendor.role,
       sender: customer._id,
+      type: 'booking',
     });
   }
 
@@ -445,6 +449,7 @@ const bookingCanceledStatusIntoDB = async (
       receiverEmail: customer.email,
       receiverRole: customer.role,
       sender: vendor._id,
+      type: 'booking',
     });
   }
 
@@ -457,6 +462,7 @@ const bookingCanceledStatusIntoDB = async (
       receiverEmail: vendor.email,
       receiverRole: vendor.role,
       sender: customer._id,
+      type: 'booking',
     });
   }
 
@@ -515,6 +521,7 @@ const bookingApprovedRequestIntoDB = async (
       receiverEmail: customer.email,
       receiverRole: customer.role,
       sender: vendor._id,
+      type: 'booking',
     });
   }
 
@@ -527,6 +534,7 @@ const bookingApprovedRequestIntoDB = async (
       receiverEmail: vendor.email,
       receiverRole: vendor.role,
       sender: customer._id,
+      type: 'booking',
     });
   }
 
@@ -567,6 +575,7 @@ const bookingDeclineRequestIntoDB = async (
       receiverEmail: customer.email,
       receiverRole: customer.role,
       sender: vendor._id,
+      type: 'booking',
     });
   }
 
@@ -579,6 +588,7 @@ const bookingDeclineRequestIntoDB = async (
       receiverEmail: vendor.email,
       receiverRole: vendor.role,
       sender: customer._id,
+      type: 'booking',
     });
   }
 
@@ -691,13 +701,12 @@ const getBookingServicingNowPanelFromDB = async (
   query: Record<string, unknown>,
 ) => {
   const nowMinutes = getCurrentMinutes();
-  const today = dayjs().format('YYYY-MM-DD');
+  const today = dayjs().startOf('day');
 
-  // Base Mongoose query
+  // 🔥 1. Base Query (NO date filter here)
   const mongooseQuery = Booking.find({
     isDeleted: false,
     request: 'approved',
-    date: { $gte: today },
   })
     .populate('service')
     .populate({
@@ -714,50 +723,64 @@ const getBookingServicingNowPanelFromDB = async (
       select: 'name image',
     });
 
-  // Apply QueryBuilder filters, search, pagination
   const bookingQuery = new QueryBuilder(mongooseQuery, query)
     .search(bookingSearchableFields)
     .filter()
-    .sort()
-    .fields(); // don't paginate yet
+    .fields();
 
   const results = await bookingQuery.modelQuery;
 
   const finalList: any[] = [];
 
-  results.forEach((doc: any) => {
-    const booking = doc.toObject ? doc.toObject() : { ...doc };
+  for (const doc of results) {
+    const booking = doc.toObject();
     const bookingDate = dayjs(booking.date);
     const start = booking.slotStart ?? -1;
     const end = booking.slotEnd ?? -1;
 
-    // Skip completed bookings for today
-    if (bookingDate.isSame(today, 'day') && end < nowMinutes) return;
+    // ❌ 1. Past date booking
+    if (bookingDate.isBefore(today, 'day')) continue;
 
-    // Determine dashboardStatus
+    // ❌ 2. Today but already finished
+    if (bookingDate.isSame(today, 'day') && end < nowMinutes) {
+      continue;
+    }
+
+    // ✅ 3. Servicing now
     if (
       bookingDate.isSame(today, 'day') &&
       start <= nowMinutes &&
       end >= nowMinutes
     ) {
       booking.dashboardStatus = 'servicingNow';
-    } else if (bookingDate.isSame(today, 'day') && start > nowMinutes) {
+    }
+
+    // ✅ 4. Next line (today future)
+    else if (bookingDate.isSame(today, 'day') && start > nowMinutes) {
       booking.dashboardStatus = 'nextLine';
-    } else if (bookingDate.isAfter(today, 'day')) {
+    }
+
+    // ✅ 5. Upcoming (future date)
+    else if (bookingDate.isAfter(today, 'day')) {
       booking.dashboardStatus = 'upcoming';
+    } else {
+      continue;
     }
 
     finalList.push(booking);
+  }
+
+  // 🔥 6. Smart Sorting (date first, then slot)
+  finalList.sort((a, b) => {
+    const dateDiff = dayjs(a.date).diff(dayjs(b.date));
+    if (dateDiff !== 0) return dateDiff;
+    return (a.slotStart ?? 0) - (b.slotStart ?? 0);
   });
 
-  // Sort by service time (nearest first)
-  finalList.sort((a, b) => a.slotStart - b.slotStart);
-
-  // Apply pagination manually
+  // 🔥 7. Pagination (Dashboard safe)
   const page = Number(query.page || 1);
   const limit = Number(query.limit || 10);
   const skip = (page - 1) * limit;
-  const paginatedList = finalList.slice(skip, skip + limit);
 
   return {
     meta: {
@@ -766,7 +789,7 @@ const getBookingServicingNowPanelFromDB = async (
       totalDoc: finalList.length,
       totalPage: Math.ceil(finalList.length / limit),
     },
-    result: paginatedList,
+    result: finalList.slice(skip, skip + limit),
   };
 };
 

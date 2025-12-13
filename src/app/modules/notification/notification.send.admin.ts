@@ -4,7 +4,7 @@ import { sendNotification } from './notification.utils';
 
 export interface IAdminSendNotificationPayload {
   sender: Types.ObjectId;
-  type?: 'text' | 'accept' | 'reject' | 'cancelled' | 'payment';
+  type?: 'text' | 'reminder' | 'payment' | 'booking';
   title: string;
   message: string;
   link?: string;

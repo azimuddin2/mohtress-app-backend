@@ -205,6 +205,7 @@ const confirmPayment = async (query: Record<string, any>) => {
         receiverEmail: user.email,
         receiverRole: user?.role as string,
         sender: user._id as any,
+        type: 'payment',
       });
     }
 

@@ -7,7 +7,7 @@ export interface INotification {
   receiverRole: string;
   message: string;
   fcmToken?: string;
-  type?: 'text' | 'accept' | 'reject' | 'cancelled' | 'payment' | 'booking';
+  type?: 'text' | 'reminder' | 'payment' | 'booking';
   title?: string;
   isRead?: boolean;
   link?: string;

@@ -61,10 +61,23 @@ const handleResetPassword = catchAsync(async (req, res) => {
   });
 });
 
+const logoutUser = catchAsync(async (req, res) => {
+  const userId = req.user.userId;
+  const result = await AuthServices.logoutUser(userId);
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: 'User logged out successfully',
+    data: result,
+  });
+});
+
 export const AuthControllers = {
   handleLoginUser,
   handleRefreshToken,
   handleChangePassword,
   handleForgotPassword,
   handleResetPassword,
+  logoutUser,
 };

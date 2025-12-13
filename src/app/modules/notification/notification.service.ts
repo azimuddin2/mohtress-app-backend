@@ -5,19 +5,28 @@ import Notification from './notification.model';
 import AppError from '../../errors/AppError';
 
 const getNotificationFromDB = async (query: Record<string, any>) => {
-  const { receiver } = query;
+  const { receiver, type } = query;
 
   if (!receiver || !mongoose.Types.ObjectId.isValid(receiver as string)) {
     throw new AppError(400, 'Invalid Receiver ID');
   }
 
-  const notificationQuery = Notification.find({ isRead: false, receiver });
+  const notificationQuery: any = { isRead: false, receiver };
 
-  const queryModel = new QueryBuilder(notificationQuery, query)
+  // type filter
+  if (type) {
+    notificationQuery.type = type;
+  }
+
+  const queryModel = new QueryBuilder(
+    Notification.find(notificationQuery),
+    query,
+  )
     .filter()
     .sort()
     .fields()
     .paginate();
+
   const data: any = await queryModel.modelQuery;
   const meta = await queryModel.countTotal();
 

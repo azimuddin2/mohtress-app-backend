@@ -354,10 +354,50 @@ const resetPassword = async (token: string, payload: TResetPassword) => {
   return result;
 };
 
+const logoutUser = async (userId: string) => {
+  const user = await User.findById(userId);
+
+  if (!user) {
+    throw new AppError(404, 'This user is not found!');
+  }
+
+  if (user?.isDeleted === true) {
+    throw new AppError(403, 'This user account is deleted!');
+  }
+
+  if (user?.status === 'blocked') {
+    throw new AppError(403, 'This user is blocked!');
+  }
+
+  const updatedUser = await User.findByIdAndUpdate(
+    userId,
+    { fcmToken: null },
+    { new: true },
+  );
+
+  const tokenToUse = updatedUser?.fcmToken;
+
+  // Send notification only if token exists AND valid
+  if (tokenToUse && updatedUser?.notifications) {
+    sendNotification([tokenToUse], {
+      title: 'Logout successfully',
+      message: 'User logged out from your account',
+      receiver: updatedUser._id as any,
+      receiverEmail: updatedUser.email,
+      receiverRole: updatedUser.role,
+      sender: updatedUser._id as any,
+      type: 'text',
+    });
+  }
+
+  return null;
+};
+
 export const AuthServices = {
   loginUser,
   refreshToken,
   changePassword,
   forgotPassword,
   resetPassword,
+  logoutUser,
 };
