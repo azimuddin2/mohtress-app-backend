@@ -165,7 +165,6 @@ const userSchema = new Schema<TUser, UserModel>(
         required: false,
       },
     },
-
     isReferral: {
       type: Boolean,
       default: false,

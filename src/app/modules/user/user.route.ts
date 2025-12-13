@@ -61,4 +61,11 @@ router.delete(
   UserControllers.deleteUserAccount,
 );
 
+router.patch(
+  '/update-notifications',
+  auth('admin', 'customer', 'freelancer', 'owner'),
+  validateRequest(UserValidations.notificationSettingsValidationSchema),
+  UserControllers.updateNotificationSettings,
+);
+
 export const UserRoutes = router;

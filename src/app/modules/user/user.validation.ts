@@ -132,8 +132,18 @@ const changeStatusValidationSchema = z.object({
   }),
 });
 
+const notificationSettingsValidationSchema = z.object({
+  body: z.object({
+    notifications: z.boolean({
+      required_error: 'Notifications setting is required',
+      invalid_type_error: 'Notifications must be true or false',
+    }),
+  }),
+});
+
 export const UserValidations = {
   createUserValidationSchema,
   updateUserValidationSchema,
   changeStatusValidationSchema,
+  notificationSettingsValidationSchema,
 };

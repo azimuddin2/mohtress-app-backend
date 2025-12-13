@@ -63,7 +63,7 @@ router.put(
   '/canceled-status/:id',
   auth('customer', 'freelancer', 'owner'),
   validateRequest(BookingValidation.updateBookingStatusValidationSchema),
-  BookingControllers.bookingCompletedStatus,
+  BookingControllers.bookingCanceledStatus,
 );
 
 router.put(

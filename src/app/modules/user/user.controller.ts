@@ -115,6 +115,23 @@ const deleteUserAccount = catchAsync(async (req, res) => {
   });
 });
 
+const updateNotificationSettings = catchAsync(async (req, res) => {
+  const { email } = req.user;
+  const { notifications } = req.body; // ✅ extract boolean
+
+  const result = await UserServices.updateNotificationSettingsIntoDB(
+    email,
+    notifications, // ✅ boolean only
+  );
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: 'Notification settings updated successfully.',
+    data: result,
+  });
+});
+
 export const UserControllers = {
   signupCustomer,
   signupOwner,
@@ -125,4 +142,5 @@ export const UserControllers = {
   updateUserPicture,
   changeStatus,
   deleteUserAccount,
+  updateNotificationSettings,
 };

@@ -112,7 +112,7 @@ const bookingCanceledStatus = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: 200,
     success: true,
-    message: 'The booking has been marked as completed successfully.',
+    message: 'The booking has been marked as canceled successfully.',
     data: result,
   });
 });
