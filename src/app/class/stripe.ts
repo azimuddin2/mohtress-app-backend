@@ -203,5 +203,6 @@ class StripeServices<T> {
     return this.stripe();
   }
 }
+
 const StripeService = new StripeServices();
 export default StripeService;
