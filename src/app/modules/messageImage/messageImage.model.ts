@@ -1,5 +1,5 @@
 import { model, Schema } from 'mongoose';
-import { TMessageImage } from './MessageImage.interface';
+import { TMessageImage } from './messageImage.interface';
 
 const messageImageSchema = new Schema<TMessageImage>(
   {
