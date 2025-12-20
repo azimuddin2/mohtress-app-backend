@@ -1,4 +1,3 @@
-import Stripe from 'stripe';
 import config from '../../config';
 import httpStatus from 'http-status';
 import StripeService from '../../class/stripe';
@@ -20,6 +19,7 @@ const stripLinkAccount = async (userId: string) => {
     const refresh_url = `${config?.server_url}/stripe/refresh/${account.id}?userId=${user?._id}`;
 
     const return_url = `${config?.client_Url}/seller/confirmation?userId=${user._id}&stripeAccountId=${account.id}`;
+
     const accountLink = await StripeService.connectAccount(
       return_url,
       refresh_url,

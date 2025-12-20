@@ -1,5 +1,6 @@
 import { Stripe as StripeType } from 'stripe';
 import config from '../config';
+
 interface IProducts {
   price_data: {
     currency: string;
