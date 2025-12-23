@@ -15,7 +15,7 @@ interface IProducts {
 class StripeServices<T> {
   private stripe() {
     return new StripeType(config.stripe_api_secret as string, {
-      apiVersion: '2025-08-27.basil',
+      apiVersion: '2025-12-15.clover',
       typescript: true,
     });
   }

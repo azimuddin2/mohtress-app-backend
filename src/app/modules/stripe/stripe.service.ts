@@ -14,12 +14,17 @@ const stripLinkAccount = async (userId: string) => {
 
   try {
     const account = await StripeService.getStripe().accounts.create({
-      // email: user?.email, (optional: uncomment if you want to pass user's email)
+      country: 'US',
+      email: user?.email,
+      type: 'express',
+      capabilities: {
+        card_payments: { requested: true },
+        transfers: { requested: true },
+      },
     });
     const refresh_url = `${config?.server_url}/stripe/refresh/${account.id}?userId=${user?._id}`;
 
     const return_url = `${config?.client_Url}/seller/confirmation?userId=${user._id}&stripeAccountId=${account.id}`;
-
     const accountLink = await StripeService.connectAccount(
       return_url,
       refresh_url,
