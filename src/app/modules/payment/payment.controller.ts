@@ -15,7 +15,9 @@ const createPayment = catchAsync(async (req: Request, res: Response) => {
 });
 
 const confirmPayment = catchAsync(async (req: Request, res: Response) => {
-  const result = await PaymentService.confirmPayment(req.query);
+  const result = await PaymentService.confirmPayment(
+    req.query as { sessionId: string; paymentId: string },
+  );
   res.redirect(
     config.server_url +
       `/api/v1/payments/success?paymentId=${result.payment._id}`,
@@ -32,33 +34,8 @@ const cancelPayment = catchAsync(async (req: Request, res: Response) => {
   res.redirect(config.server_url + '/payment/cancel');
 });
 
-const successPayment = catchAsync(async (req, res) => {
-  const result = await PaymentService.successPayment(req.query);
-
-  sendResponse(res, {
-    statusCode: 200,
-    success: true,
-    message: 'Payment completed successfully. Thank you for your purchase!',
-    data: result,
-  });
-});
-
-const getAllPayment = catchAsync(async (req, res) => {
-  const result = await PaymentService.getAllPaymentFromDB(req.query);
-
-  sendResponse(res, {
-    statusCode: 200,
-    success: true,
-    message: 'Payment retrieved successfully',
-    meta: result.meta,
-    data: result.result,
-  });
-});
-
 export const PaymentController = {
   createPayment,
   confirmPayment,
   cancelPayment,
-  successPayment,
-  getAllPayment,
 };

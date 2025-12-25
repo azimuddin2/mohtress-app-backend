@@ -5,9 +5,7 @@ import { PaymentController } from './payment.controller';
 
 const router = Router();
 
-router.get('/', PaymentController.getAllPayment);
 router.get('/confirm-payment', PaymentController.confirmPayment);
-router.get('/success', PaymentController.successPayment);
 router.get('/cancel', PaymentController.cancelPayment);
 
 router.post(

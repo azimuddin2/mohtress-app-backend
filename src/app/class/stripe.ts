@@ -145,43 +145,39 @@ class StripeServices<T> {
     products: IProducts[],
     success_url: string,
     cancel_url: string,
-    customer: string = '', // Optional: customer ID for Stripe
+    customer: string = '',
     currency: string = 'usd',
-    payment_method_types: Array<'card' | 'paypal' | 'ideal'> = ['card'],
+    stylistStripeAccountId: string = '',
+    payment_method_types: Array<'card'> = ['card'],
   ) {
     try {
-      // if (!product?.name || !product?.amount || !product?.quantity) {
-      //   throw new Error('Product details are incomplete.');
-      // }
       const stripe = this.stripe();
 
-      return await stripe.checkout.sessions.create({
+      const sessionParams: any = {
         line_items: products,
-
-        success_url: success_url,
-        cancel_url: cancel_url,
+        success_url,
+        cancel_url,
         mode: 'payment',
-        // metadata: {
-        //   user: JSON.stringify({
-        //     paymentId: payment.id,
-        //   }),
-        // },
-        invoice_creation: {
-          enabled: true,
-        },
         customer,
-        // payment_intent_data: {
-        //   metadata: {
-        //     payment: JSON.stringify({
-        //       ...payment,
-        //     }),
-        //   },
-        // },
-        // payment_method_types: ['card', 'amazon_pay', 'cashapp', 'us_bank_account'],
         payment_method_types,
-      });
+      };
+
+      // Only add transfer_data if stylistStripeAccountId exists
+      if (stylistStripeAccountId) {
+        sessionParams.payment_intent_data = {
+          application_fee_amount: Math.round(
+            products[0].price_data.unit_amount / 2,
+          ),
+          transfer_data: { destination: stylistStripeAccountId },
+        };
+      }
+
+      return await stripe.checkout.sessions.create(sessionParams);
     } catch (error) {
-      this.handleError(error, 'Error creating checkout session');
+      this.handleError(
+        error,
+        'Error creating checkout session with auto-split',
+      );
     }
   }
 
