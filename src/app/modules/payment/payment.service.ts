@@ -10,10 +10,9 @@ import { sendNotification } from '../notification/notification.utils';
 import { TPayment } from './payment.interface';
 import { generateTrxId } from './payment.utils';
 
-// Fixed deposit amount
-const DEPOSIT_AMOUNT = 10; // USD
-
 const createPayment = async (payload: TPayment) => {
+  const DEPOSIT_AMOUNT = 10; // USD Fixed deposit amount
+
   const session = await startSession();
   session.startTransaction();
 
@@ -82,7 +81,7 @@ const createPayment = async (payload: TPayment) => {
     if (!stylist || !stylist.stripeAccountId) {
       throw new AppError(
         httpStatus.BAD_REQUEST,
-        'Stylist has not completed Stripe onboarding',
+        'Stylist has not completed Stripe onboarding account setup',
       );
     }
 

@@ -1,6 +1,11 @@
-import { TStatus } from './payment.interface';
+import { TPaymentStatus } from './payment.interface';
 
-export const Status: TStatus[] = ['pending', 'paid', 'refunded', 'cancelled'];
+export const PaymentStatus: TPaymentStatus[] = [
+  'pending',
+  'paid',
+  'refunded',
+  'cancelled',
+];
 
 export enum PAYMENT_STATUS {
   pending = 'pending',

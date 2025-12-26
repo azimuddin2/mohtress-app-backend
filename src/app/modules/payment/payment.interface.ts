@@ -26,10 +26,8 @@ export type TPayment = {
   paymentIntentId?: string; // optional (after success)
   stripeSessionId?: string; // optional (recommended)
 
-  // Flags
   isPaid: boolean;
   isDeleted: boolean;
-
   createdAt?: Date;
   updatedAt?: Date;
 };
