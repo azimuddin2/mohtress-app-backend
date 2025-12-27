@@ -11,7 +11,6 @@ import { Message } from './app/modules/message/message.model';
 import AppError from './app/errors/AppError';
 import getUserDetailsFromToken from './app/helpers/getUserDetailsFromToken';
 import callbackFn from './app/utils/callbackFn';
-import { sendNotification } from './app/modules/notification/notification.utils';
 
 const initializeSocketIO = (server: HttpServer) => {
   const io = new Server(server, {

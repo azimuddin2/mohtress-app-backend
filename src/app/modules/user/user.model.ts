@@ -2,7 +2,7 @@ import { Schema, model } from 'mongoose';
 import bcrypt from 'bcrypt';
 import config from '../../config';
 import { TUser, UserModel } from './user.interface';
-import { UserRole, UserStatus } from './user.constant';
+import { Login_With, UserRole, UserStatus } from './user.constant';
 
 // ✅ Define the Mongoose schema
 const userSchema = new Schema<TUser, UserModel>(
@@ -125,6 +125,13 @@ const userSchema = new Schema<TUser, UserModel>(
         select: 0,
       },
     },
+
+    loginWth: {
+      type: String,
+      enum: Login_With,
+      default: Login_With.credentials,
+    },
+
     isRegistration: {
       type: Boolean,
       default: false,

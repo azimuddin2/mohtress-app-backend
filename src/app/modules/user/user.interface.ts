@@ -34,6 +34,8 @@ export type TUser = {
     status: boolean;
   };
 
+  loginWth: 'google' | 'apple' | 'credentials';
+
   isRegistration: boolean;
   freelancerReg?: Types.ObjectId | TOwnerRegistration;
   ownerReg?: Types.ObjectId | TFreelancerRegistration;

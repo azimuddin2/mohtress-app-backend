@@ -35,7 +35,15 @@ const returnUrl = catchAsync(async (req: Request, res: Response) => {
     stripeAccountId: stripeAccountId as string,
   });
 
-  return res.redirect(`${config.client_Url}/seller/success`);
+  // Instead of redirect, return JSON for mobile apps
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Stripe Onboarding Account Completed',
+    data: {
+      redirectUrl: `${config.client_Url}/seller/success`,
+    },
+  });
 });
 
 const deleteAllRestricted = catchAsync(async (req: Request, res: Response) => {

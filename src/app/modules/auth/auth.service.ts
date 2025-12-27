@@ -18,6 +18,10 @@ import { TFreelancerRegistration } from '../freelancerRegistration/freelancerReg
 import { TOwnerRegistration } from '../ownerRegistration/ownerRegistration.interface';
 import { TUser } from '../user/user.interface';
 import { sendNotification } from '../notification/notification.utils';
+import { DecodedIdToken } from 'firebase-admin/lib/auth/token-verifier';
+import httpStatus from 'http-status';
+import { Login_With, USER_ROLE } from '../user/user.constant';
+import firebaseAdmin from '../../utils/firebase';
 
 const loginUser = async (payload: TLoginUser) => {
   // 1️⃣ Find user and populate profiles
@@ -391,6 +395,132 @@ const logoutUser = async (userId: string) => {
   }
 
   return null;
+};
+
+// SOCIAL LOGIN - GOOGLE LOGIN & APPLE LOGIN
+
+const googleLogin = async (payload: any, req: Request) => {
+  console.log('Google login payload___', payload);
+
+  try {
+    const decodedToken = await firebaseAdmin
+      .auth()
+      .verifyIdToken(payload?.token);
+
+    if (!decodedToken) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Invalid token');
+    }
+
+    if (!(await isValidFcmToken(payload?.fcmToken))) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'FCM Token is invalid');
+    }
+
+    if (!decodedToken.email_verified) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Google email is not verified',
+      );
+    }
+
+    const isExistUser = await User.isUserExistsByEmail(
+      decodedToken.email as string,
+    );
+
+    /* ================= EXISTING USER ================= */
+    if (isExistUser) {
+      if (isExistUser.isDeleted) {
+        throw new AppError(403, 'This user account is deleted!');
+      }
+
+      if (isExistUser.status === 'blocked') {
+        throw new AppError(403, 'This user is blocked!');
+      }
+
+      // Block non-google login attempts
+      if (isExistUser.loginWth !== Login_With.google) {
+        throw new AppError(
+          httpStatus.FORBIDDEN,
+          `This account is registered with ${isExistUser.loginWth}`,
+        );
+      }
+
+      if (!isExistUser.verification?.status) {
+        throw new AppError(
+          httpStatus.FORBIDDEN,
+          'User account is not verified',
+        );
+      }
+
+      const jwtPayload: TJwtPayload = {
+        userId: isExistUser._id.toString(),
+        name: isExistUser.fullName,
+        email: isExistUser.email,
+        role: isExistUser.role,
+      };
+
+      const accessToken = createToken(
+        jwtPayload,
+        config.jwt_access_secret!,
+        config.jwt_access_expires_in!,
+      );
+
+      const refreshToken = createToken(
+        jwtPayload,
+        config.jwt_refresh_secret!,
+        config.jwt_refresh_expires_in!,
+      );
+
+      // Update only FCM token (no device tracking)
+      await User.findByIdAndUpdate(isExistUser._id, {
+        fcmToken: payload?.fcmToken,
+      });
+
+      return { user: isExistUser, accessToken, refreshToken };
+    }
+
+    /* ================= NEW USER ================= */
+    const user = await User.create({
+      name: decodedToken.name,
+      email: decodedToken.email,
+      profile: decodedToken.picture,
+      phoneNumber: decodedToken.phone_number,
+      role: payload?.role ?? USER_ROLE.customer,
+      loginWth: Login_With.google,
+      verification: { status: true },
+      expireAt: null,
+    });
+
+    const jwtPayload: TJwtPayload = {
+      userId: user._id.toString(),
+      name: user.fullName,
+      email: user.email,
+      role: user.role,
+    };
+
+    const accessToken = createToken(
+      jwtPayload,
+      config.jwt_access_secret!,
+      config.jwt_access_expires_in!,
+    );
+
+    const refreshToken = createToken(
+      jwtPayload,
+      config.jwt_refresh_secret!,
+      config.jwt_refresh_expires_in!,
+    );
+
+    // Save FCM token for new user as well
+    await User.findByIdAndUpdate(user._id, {
+      fcmToken: payload?.fcmToken,
+    });
+
+    return { user, accessToken, refreshToken };
+  } catch (error: any) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      error?.message || 'Google login failed',
+    );
+  }
 };
 
 export const AuthServices = {

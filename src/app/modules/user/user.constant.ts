@@ -16,6 +16,12 @@ export const UserRole: TRole[] = [
   'sub-admin',
 ];
 
+export enum Login_With {
+  google = 'google',
+  apple = 'apple',
+  credentials = 'credentials',
+}
+
 export const UserStatus: TStatus[] = ['ongoing', 'confirmed', 'blocked'];
 
 export const userSearchableFields = [
