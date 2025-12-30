@@ -44,5 +44,6 @@ router.put(
 );
 
 router.post('/google-login', AuthControllers.handleGoogleLogin);
+router.post('/apple-login', AuthControllers.handleAppleLogin);
 
 export const AuthRoutes = router;

@@ -8,7 +8,7 @@ import {
 import config from '../../config';
 import { User } from '../user/user.model';
 import { verifyToken } from '../../utils/verifyToken';
-import { createToken, isValidFcmToken } from './auth.utils';
+import { createToken, isValidFcmToken, verifyAppleToken } from './auth.utils';
 import { JwtPayload } from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import { generateOtp } from '../../utils/generateOtp';
@@ -396,7 +396,7 @@ const logoutUser = async (userId: string) => {
   return null;
 };
 
-// SOCIAL LOGIN - GOOGLE LOGIN & APPLE LOGIN
+// SOCIAL LOGIN METHODS GOOGLE & APPLE
 
 const googleLogin = async (payload: any) => {
   try {
@@ -430,9 +430,7 @@ const googleLogin = async (payload: any) => {
     /* ================= CHECK USER EXISTS ================= */
     const existingUser = await User.isUserExistsByEmail(decodedToken.email);
 
-    /* =======================================================
-       =============== EXISTING USER LOGIN ==================
-       ======================================================= */
+    /* =============== EXISTING USER LOGIN ================== */
     if (existingUser) {
       if (existingUser.isDeleted) {
         throw new AppError(httpStatus.FORBIDDEN, 'User account is deleted');
@@ -489,10 +487,7 @@ const googleLogin = async (payload: any) => {
       };
     }
 
-    /* =======================================================
-       ================== NEW USER CREATE ====================
-       ======================================================= */
-
+    /* ================== NEW USER CREATE ==================== */
     const newUser = await User.create({
       fullName: decodedToken.name || 'Google User',
       email: decodedToken.email,
@@ -546,6 +541,136 @@ const googleLogin = async (payload: any) => {
   }
 };
 
+const appleLogin = async (payload: any) => {
+  try {
+    if (!payload?.token) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Token is required');
+    }
+
+    /* ================= VERIFY APPLE TOKEN ================= */
+    const decodedToken: any = await verifyAppleToken(payload.token);
+
+    if (!decodedToken?.sub) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Invalid Apple token');
+    }
+
+    // ⚠️ Apple email only first login
+    const email =
+      decodedToken.email || payload?.email || `${decodedToken.sub}@apple.com`;
+
+    /* ================= FCM TOKEN VALIDATION ================= */
+    if (payload?.fcmToken) {
+      const isValid = await isValidFcmToken(payload.fcmToken);
+      if (!isValid) {
+        throw new AppError(httpStatus.BAD_REQUEST, 'Invalid FCM token');
+      }
+    }
+
+    /* ================= CHECK USER EXISTS ================= */
+    const existingUser = await User.isUserExistsByEmail(email);
+
+    /* =============== EXISTING USER LOGIN ================== */
+    if (existingUser) {
+      if (existingUser.isDeleted) {
+        throw new AppError(httpStatus.FORBIDDEN, 'User account is deleted');
+      }
+
+      if (existingUser.status === 'blocked') {
+        throw new AppError(httpStatus.FORBIDDEN, 'User is blocked');
+      }
+
+      if (existingUser.loginWth !== Login_With.apple) {
+        throw new AppError(
+          httpStatus.FORBIDDEN,
+          `Account registered with ${existingUser.loginWth}`,
+        );
+      }
+
+      if (!existingUser.verification?.status) {
+        throw new AppError(
+          httpStatus.FORBIDDEN,
+          'User account is not verified',
+        );
+      }
+
+      /* ================= CREATE JWT ================= */
+      const jwtPayload: TJwtPayload = {
+        userId: existingUser._id.toString(),
+        email: existingUser.email,
+        role: existingUser.role,
+      };
+
+      const accessToken = createToken(
+        jwtPayload,
+        config.jwt_access_secret!,
+        config.jwt_access_expires_in!,
+      );
+
+      const refreshToken = createToken(
+        jwtPayload,
+        config.jwt_refresh_secret!,
+        config.jwt_refresh_expires_in!,
+      );
+
+      if (payload?.fcmToken) {
+        await User.findByIdAndUpdate(existingUser._id, {
+          fcmToken: payload.fcmToken,
+        });
+      }
+
+      return { user: existingUser, accessToken, refreshToken };
+    }
+
+    /* ================= NEW USER CREATE ================= */
+    const newUser = await User.create({
+      fullName: payload?.fullName || 'Apple User',
+      email,
+      phone: 'N/A',
+
+      streetAddress: 'N/A',
+      city: 'N/A',
+      state: 'N/A',
+      zipCode: 'N/A',
+
+      password: 'APPLE_LOGIN_NO_PASSWORD',
+      role: USER_ROLE.customer,
+      loginWth: Login_With.apple,
+
+      isVerified: true,
+      verification: { status: true },
+
+      image: null,
+      fcmToken: payload?.fcmToken || null,
+    });
+
+    /* ================= CREATE JWT FOR NEW USER ================= */
+    const jwtPayload: TJwtPayload = {
+      userId: newUser._id.toString(),
+      email: newUser.email,
+      role: newUser.role,
+    };
+
+    const accessToken = createToken(
+      jwtPayload,
+      config.jwt_access_secret!,
+      config.jwt_access_expires_in!,
+    );
+
+    const refreshToken = createToken(
+      jwtPayload,
+      config.jwt_refresh_secret!,
+      config.jwt_refresh_expires_in!,
+    );
+
+    return { user: newUser, accessToken, refreshToken };
+  } catch (error: any) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      error?.message || 'Apple login failed',
+    );
+  }
+};
+
 export const AuthServices = {
   loginUser,
   refreshToken,
@@ -554,4 +679,5 @@ export const AuthServices = {
   resetPassword,
   logoutUser,
   googleLogin,
+  appleLogin,
 };

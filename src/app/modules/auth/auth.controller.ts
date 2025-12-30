@@ -86,6 +86,19 @@ const handleGoogleLogin = catchAsync(async (req, res) => {
   });
 });
 
+const handleAppleLogin = catchAsync(async (req, res) => {
+  const result = await AuthServices.appleLogin(req.body);
+
+  const { user, accessToken, refreshToken } = result;
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: 'User logged in with Apple successfully!',
+    data: { user, accessToken, refreshToken },
+  });
+});
+
 export const AuthControllers = {
   handleLoginUser,
   handleRefreshToken,
@@ -94,4 +107,5 @@ export const AuthControllers = {
   handleResetPassword,
   logoutUser,
   handleGoogleLogin,
+  handleAppleLogin,
 };
