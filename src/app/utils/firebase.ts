@@ -1,16 +1,14 @@
 import admin from 'firebase-admin';
-import config from '../config';
+import path from 'path';
+
+// Absolute path to firebase.json
+const serviceAccountPath = path.join(process.cwd(), 'firebase.json');
 
 if (!admin.apps.length) {
   admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: config.firebase_project_id,
-      privateKey: config.firebase_private_key,
-      clientEmail: config.firebase_client_email,
-    } as admin.ServiceAccount),
+    credential: admin.credential.cert(serviceAccountPath),
   });
+  console.log('Firebase admin initialized ✅');
 }
 
-const firebaseAdmin = admin;
-
-export default firebaseAdmin;
+export default admin;

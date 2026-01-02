@@ -20,7 +20,7 @@ import { TUser } from '../user/user.interface';
 import { sendNotification } from '../notification/notification.utils';
 import httpStatus from 'http-status';
 import { Login_With, USER_ROLE } from '../user/user.constant';
-import firebaseAdmin from '../../utils/firebase';
+import admin from '../../utils/firebase';
 
 const loginUser = async (payload: TLoginUser) => {
   // 1️⃣ Find user and populate profiles
@@ -404,9 +404,7 @@ const googleLogin = async (payload: any) => {
       throw new AppError(httpStatus.BAD_REQUEST, 'Token is required');
     }
 
-    const decodedToken = await firebaseAdmin
-      .auth()
-      .verifyIdToken(payload.token);
+    const decodedToken = await admin.auth().verifyIdToken(payload.token);
 
     console.log('Decoded Google Token:', decodedToken);
 
