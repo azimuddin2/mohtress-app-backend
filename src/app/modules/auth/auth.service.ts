@@ -440,10 +440,10 @@ const googleLogin = async (payload: any) => {
         throw new AppError(httpStatus.FORBIDDEN, 'User is blocked');
       }
 
-      if (existingUser.loginWth !== Login_With.google) {
+      if (existingUser.loginWith !== Login_With.google) {
         throw new AppError(
           httpStatus.FORBIDDEN,
-          `Account registered with ${existingUser.loginWth}`,
+          `Account registered with ${existingUser.loginWith}`,
         );
       }
 
@@ -579,10 +579,10 @@ const appleLogin = async (payload: any) => {
         throw new AppError(httpStatus.FORBIDDEN, 'User is blocked');
       }
 
-      if (existingUser.loginWth !== Login_With.apple) {
+      if (existingUser.loginWith !== Login_With.apple) {
         throw new AppError(
           httpStatus.FORBIDDEN,
-          `Account registered with ${existingUser.loginWth}`,
+          `Account registered with ${existingUser.loginWith}`,
         );
       }
 
