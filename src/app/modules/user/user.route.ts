@@ -9,22 +9,28 @@ const router = express.Router();
 const upload = multer({ storage: memoryStorage() });
 
 router.post(
-  '/customer/signup',
+  '/signup',
   validateRequest(UserValidations.createUserValidationSchema),
-  UserControllers.signupCustomer,
+  UserControllers.signupUser,
 );
 
-router.post(
-  '/owner/signup',
-  validateRequest(UserValidations.createUserValidationSchema),
-  UserControllers.signupOwner,
-);
+// router.post(
+//   '/customer/signup',
+//   validateRequest(UserValidations.createUserValidationSchema),
+//   UserControllers.signupCustomer,
+// );
 
-router.post(
-  '/freelancer/signup',
-  validateRequest(UserValidations.createUserValidationSchema),
-  UserControllers.signupFreelancer,
-);
+// router.post(
+//   '/owner/signup',
+//   validateRequest(UserValidations.createUserValidationSchema),
+//   UserControllers.signupOwner,
+// );
+
+// router.post(
+//   '/freelancer/signup',
+//   validateRequest(UserValidations.createUserValidationSchema),
+//   UserControllers.signupFreelancer,
+// );
 
 router.post(
   '/admin/create-customer',

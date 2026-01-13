@@ -6,6 +6,12 @@ import { OtpValidations } from './otp.validation';
 const router = express.Router();
 
 router.post(
+  '/send-otp',
+  // validateRequest(OtpValidations.sendOtpValidationSchema),
+  OtpControllers.handleSendOtp,
+);
+
+router.post(
   '/verify-otp',
   validateRequest(OtpValidations.verifyOtpValidationSchema),
   OtpControllers.handleVerifyOtp,
