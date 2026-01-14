@@ -13,7 +13,7 @@ router.post(
 
 router.post(
   '/verify-otp',
-  validateRequest(OtpValidations.verifyOtpValidationSchema),
+  // validateRequest(OtpValidations.verifyOtpValidationSchema),
   OtpControllers.handleVerifyOtp,
 );
 

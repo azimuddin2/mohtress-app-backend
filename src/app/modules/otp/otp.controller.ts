@@ -19,10 +19,12 @@ const handleSendOtp = catchAsync(async (req, res) => {
 });
 
 const handleVerifyOtp = catchAsync(async (req, res) => {
-  const token = req?.headers?.authorization as string;
-  const otp = req.body.otp;
+  // const token = req?.headers?.authorization as string;
+  // const otp = req.body.otp;
 
-  const result = await OtpServices.verifyOtp(token, otp);
+  const { userId, otp } = req.body;
+
+  const result = await OtpServices.verifyOtp(userId, otp);
 
   sendResponse(res, {
     statusCode: 200,

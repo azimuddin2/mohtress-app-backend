@@ -14,20 +14,22 @@ import { deleteFromS3, uploadToS3 } from '../../utils/awsS3FileUploader';
 import { generateStrongPassword } from './user.utils';
 
 const signupUserIntoDB = async (payload: TUser) => {
-  // 1. Check if user exists
-  const existingUser = await User.findOne({
+  const exists = await User.findOne({
     $or: [{ email: payload.email }, { phone: payload.phone }],
   });
 
-  if (existingUser) throw new AppError(409, 'Email or phone already exists.');
+  if (exists) {
+    throw new AppError(409, 'Email or phone already exists');
+  }
 
-  // 2. Save user in DB without sending OTP
-  const user = await User.create(payload);
+  const user = await User.create({
+    ...payload,
+    isVerified: false,
+  });
 
-  // 3. Return userId for OTP flow
   return {
-    verificationMethod: ['email', 'phone'],
     userId: user._id,
+    verificationOptions: ['email', 'phone'],
   };
 };
 

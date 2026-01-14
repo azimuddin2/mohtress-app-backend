@@ -28,7 +28,7 @@ export type TUser = {
   image: string | null;
   isDeleted: boolean;
   isVerified: boolean;
-  verificationMethod: 'email' | 'phone';
+  verificationMethod: 'email' | 'phone' | null;
   verification: {
     otp: string | number;
     expiresAt: Date;
