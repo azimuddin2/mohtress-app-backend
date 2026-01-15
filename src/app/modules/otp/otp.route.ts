@@ -7,13 +7,19 @@ const router = express.Router();
 
 router.post(
   '/send-otp',
-  // validateRequest(OtpValidations.sendOtpValidationSchema),
+  validateRequest(OtpValidations.sendOtpValidationSchema),
   OtpControllers.handleSendOtp,
 );
 
 router.post(
+  '/resend-otp',
+  validateRequest(OtpValidations.sendOtpValidationSchema),
+  OtpControllers.handleRendOtp,
+);
+
+router.post(
   '/verify-otp',
-  // validateRequest(OtpValidations.verifyOtpValidationSchema),
+  validateRequest(OtpValidations.verifyOtpValidationSchema),
   OtpControllers.handleVerifyOtp,
 );
 

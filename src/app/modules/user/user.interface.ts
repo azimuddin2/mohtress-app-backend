@@ -30,8 +30,8 @@ export type TUser = {
   isVerified: boolean;
   verificationMethod: 'email' | 'phone' | null;
   verification: {
-    otp: string | number;
-    expiresAt: Date;
+    otp: string | number | null;
+    expiresAt: Date | null;
     status: boolean;
   };
 

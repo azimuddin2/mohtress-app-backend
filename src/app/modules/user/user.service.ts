@@ -2,12 +2,7 @@ import mongoose from 'mongoose';
 import AppError from '../../errors/AppError';
 import { TUser } from './user.interface';
 import { User } from './user.model';
-import { generateOtp } from '../../utils/generateOtp';
-import moment from 'moment';
-import config from '../../config';
 import { sendEmail } from '../../utils/sendEmail';
-import { TJwtPayload } from '../auth/auth.interface';
-import { createToken } from '../auth/auth.utils';
 import QueryBuilder from '../../builder/QueryBuilder';
 import { userSearchableFields } from './user.constant';
 import { deleteFromS3, uploadToS3 } from '../../utils/awsS3FileUploader';
@@ -29,6 +24,9 @@ const signupUserIntoDB = async (payload: TUser) => {
 
   return {
     userId: user._id,
+    name: user.fullName,
+    email: user.email,
+    phone: user.phone,
     verificationOptions: ['email', 'phone'],
   };
 };

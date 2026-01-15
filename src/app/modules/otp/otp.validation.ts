@@ -1,7 +1,21 @@
 import { z } from 'zod';
 
+const sendOtpValidationSchema = z.object({
+  body: z.object({
+    userId: z.string({
+      required_error: 'User ID is required',
+    }),
+    method: z.enum(['email', 'phone'], {
+      required_error: 'Method is required',
+    }),
+  }),
+});
+
 const verifyOtpValidationSchema = z.object({
   body: z.object({
+    userId: z.string({
+      required_error: 'User ID is required',
+    }),
     otp: z
       .string({
         required_error: 'OTP is required',
@@ -13,4 +27,5 @@ const verifyOtpValidationSchema = z.object({
 
 export const OtpValidations = {
   verifyOtpValidationSchema,
+  sendOtpValidationSchema,
 };

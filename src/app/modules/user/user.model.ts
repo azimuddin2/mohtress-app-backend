@@ -1,4 +1,4 @@
-import { Schema, model } from 'mongoose';
+import mongoose, { Schema, model } from 'mongoose';
 import bcrypt from 'bcrypt';
 import config from '../../config';
 import { TUser, UserModel } from './user.interface';
@@ -118,19 +118,19 @@ const userSchema = new Schema<TUser, UserModel>(
       type: String,
       enum: ['email', 'phone'],
     },
+
     verification: {
       otp: {
-        type: String,
-        select: 0,
+        type: mongoose.Schema.Types.Mixed,
+        default: null,
       },
       expiresAt: {
         type: Date,
-        select: 0,
+        default: null,
       },
       status: {
         type: Boolean,
         default: false,
-        select: 0,
       },
     },
 
