@@ -98,6 +98,11 @@ const OwnerRegistrationSchema = new Schema<TOwnerRegistration>(
       default: 0,
     },
 
+    qrToken: {
+      type: String,
+      default: null,
+    },
+
     isDeleted: { type: Boolean, default: false },
   },
   {

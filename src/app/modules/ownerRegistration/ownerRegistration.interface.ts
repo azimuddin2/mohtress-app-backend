@@ -34,5 +34,7 @@ export type TOwnerRegistration = {
   reviews: Types.ObjectId[];
   avgRating?: number;
 
+  qrToken?: string;
+
   isDeleted: boolean;
 };

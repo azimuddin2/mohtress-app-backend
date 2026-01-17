@@ -32,6 +32,10 @@ export type TBooking = {
   service: Types.ObjectId;
   serviceType: SERVICE_MODEL_TYPE;
 
+  bookingSource: 'online' | 'walkin'; // ✅ NEW
+  queueNumber?: number; // ✅ NEW
+  qrToken?: string; // ✅ NEW
+
   addOnServices: TAddOnService[];
 
   email: string;

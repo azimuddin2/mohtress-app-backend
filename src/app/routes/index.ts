@@ -27,6 +27,7 @@ import { messagesRoutes } from '../modules/message/message.route';
 import { NotificationRoutes } from '../modules/notification/notification.route';
 import { MessageImageRoutes } from '../modules/messageImage/messageImage.route';
 import { StripeRoute } from '../modules/stripe/stripe.route';
+import { QRCodeRoutes } from '../modules/qrCode/qrCode.route';
 
 const router = Router();
 
@@ -142,6 +143,10 @@ const moduleRoutes = [
   {
     path: '/notifications',
     route: NotificationRoutes,
+  },
+  {
+    path: '/qr-code',
+    route: QRCodeRoutes,
   },
 ];
 

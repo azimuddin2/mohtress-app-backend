@@ -57,6 +57,25 @@ const bookingSchema = new Schema<TBooking>(
       required: true,
     },
 
+    // ✅ NEW — ONLINE / WALK-IN
+    bookingSource: {
+      type: String,
+      enum: ['online', 'walkin'],
+      default: 'online',
+    },
+
+    // ✅ NEW — Unified Queue Number
+    queueNumber: {
+      type: Number,
+      default: null,
+    },
+
+    // ✅ NEW — QR Walk-in token reference
+    qrToken: {
+      type: String,
+      default: null,
+    },
+
     // Array of add-on services
     addOnServices: [addOnServiceSchema],
 
