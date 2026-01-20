@@ -12,8 +12,10 @@ import { bookingSearchableFields } from './booking.constant';
 import { getCurrentMinutes } from './booking.utils';
 import { sendNotification } from '../notification/notification.utils';
 import dayjs from 'dayjs';
+import { OwnerRegistration } from '../ownerRegistration/ownerRegistration.model';
 
-const createBookingIntoDB = async (payload: TBooking, files: any) => {
+// Create Online Booking API
+const createOnlineBookingIntoDB = async (payload: TBooking, files: any) => {
   const { customer, service, vendor, date, time, specialist, serviceType } =
     payload;
 
@@ -188,6 +190,75 @@ const createBookingIntoDB = async (payload: TBooking, files: any) => {
       type: 'booking',
     });
   }
+
+  return booking;
+};
+
+// Create  Walk-in booking API
+const createWalkInBookingIntoDB = async (payload: TBooking) => {
+  const { qrToken, customerName, phone, service } = payload;
+
+  console.log('Payload received for walk-in booking:', payload);
+
+  // 1️⃣ Validate QR token
+  const owner = await OwnerRegistration.findOne({ qrToken });
+  if (!owner) throw new AppError(404, 'Invalid QR code');
+
+  // 2️⃣ Get service
+  const getService = await OwnerService.findById(service);
+  if (!getService) throw new AppError(404, 'Service not found');
+
+  const serviceDuration = Number(getService.time);
+  if (isNaN(serviceDuration) || serviceDuration <= 0)
+    throw new AppError(400, 'Invalid service duration');
+
+  // 3️⃣ Get today date
+  const today = new Date().toISOString().split('T')[0];
+
+  // 4️⃣ Find last booking for this vendor today
+  const lastBooking = await Booking.findOne({
+    vendor: owner.user,
+    date: today,
+    isDeleted: false,
+  }).sort({ slotEnd: -1 });
+
+  // 5️⃣ Auto calculate slotStart & slotEnd
+  const now = new Date();
+  const nowInMinutes = now.getHours() * 60 + now.getMinutes();
+
+  const slotStart = lastBooking?.slotEnd ?? nowInMinutes; // If undefined, use nowInMinutes
+  const slotEnd = slotStart + serviceDuration;
+
+  // 6️⃣ Queue number
+  const lastQueue = await Booking.findOne({
+    vendor: owner.user,
+    date: today,
+  }).sort({ queueNumber: -1 });
+  const queueNumber = lastQueue ? lastQueue.queueNumber! + 1 : 1;
+
+  // 7️⃣ Create booking
+  const booking = await Booking.create({
+    vendor: owner.user,
+    customer: null, // walk-in
+    customerName,
+    phone,
+    email: '',
+    service: getService._id,
+    serviceType: SERVICE_MODEL_TYPE.OwnerService,
+    bookingSource: 'walkin',
+    queueNumber,
+    date: today,
+    time: now.toLocaleTimeString(),
+    duration: getService.time,
+    slotStart,
+    slotEnd,
+    totalPrice: getService.price,
+    status: lastBooking ? 'waiting' : 'serving',
+    dashboardStatus: lastBooking ? 'nextLine' : 'servicingNow',
+    request: 'approved',
+    isPaid: true,
+    isDeleted: false,
+  });
 
   return booking;
 };
@@ -798,7 +869,8 @@ const getBookingServicingNowPanelFromDB = async (
 };
 
 export const BookingServices = {
-  createBookingIntoDB,
+  createOnlineBookingIntoDB,
+  createWalkInBookingIntoDB,
   getAllBookingsFromDB,
   getBookingsRequestFromDB,
   getBookingsHistoryByCustomerFromDB,

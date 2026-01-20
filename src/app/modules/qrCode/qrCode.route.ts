@@ -6,6 +6,4 @@ const router = express.Router();
 
 router.get('/generate/:ownerId', auth('owner'), QRCodeController.generateQR);
 
-router.post('/walkin-booking', QRCodeController.createWalkInBooking);
-
 export const QRCodeRoutes = router;

@@ -3,13 +3,27 @@ import catchAsync from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { BookingServices } from './booking.service';
 
-const createBooking = catchAsync(async (req, res) => {
-  const result = await BookingServices.createBookingIntoDB(req.body, req.files);
+const createOnlineBooking = catchAsync(async (req, res) => {
+  const result = await BookingServices.createOnlineBookingIntoDB(
+    req.body,
+    req.files,
+  );
 
   sendResponse(res, {
     statusCode: 201,
     success: true,
     message: 'Service booking successfully',
+    data: result,
+  });
+});
+
+const createWalkInBooking = catchAsync(async (req, res) => {
+  const result = await BookingServices.createWalkInBookingIntoDB(req.body);
+
+  sendResponse(res, {
+    statusCode: 201,
+    success: true,
+    message: 'Walk-in booking successfully',
     data: result,
   });
 });
@@ -174,7 +188,8 @@ const getBookingServicingNowPanel = catchAsync(async (req, res) => {
 });
 
 export const BookingControllers = {
-  createBooking,
+  createOnlineBooking,
+  createWalkInBooking,
   getAllBookings,
   getBookingsRequest,
   getBookingsHistoryByCustomer,

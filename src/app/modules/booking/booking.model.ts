@@ -33,7 +33,12 @@ const bookingSchema = new Schema<TBooking>(
     customer: {
       type: Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+    },
+    customerName: {
+      type: String,
+    },
+    phone: {
+      type: String,
     },
 
     freelancerReg: {
@@ -81,7 +86,6 @@ const bookingSchema = new Schema<TBooking>(
 
     email: {
       type: String,
-      required: true,
     },
     date: {
       type: String,

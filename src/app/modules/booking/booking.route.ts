@@ -15,8 +15,10 @@ router.post(
   upload.fields([{ name: 'images', maxCount: 3 }]),
   parseData(),
   validateRequest(BookingValidation.createBookingValidationSchema),
-  BookingControllers.createBooking,
+  BookingControllers.createOnlineBooking,
 );
+
+router.post('/walkin', BookingControllers.createWalkInBooking);
 
 router.get(
   '/vendor-home',

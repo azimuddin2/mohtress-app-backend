@@ -14,18 +14,6 @@ const generateQR = catchAsync(async (req, res) => {
   });
 });
 
-const createWalkInBooking = catchAsync(async (req, res) => {
-  const result = await QRCodeService.createWalkInBookingIntoDB(req.body);
-
-  sendResponse(res, {
-    statusCode: 201,
-    success: true,
-    message: 'Walk-in booking created successfully',
-    data: result,
-  });
-});
-
 export const QRCodeController = {
   generateQR,
-  createWalkInBooking,
 };

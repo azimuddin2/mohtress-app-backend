@@ -24,7 +24,10 @@ export type TImage = {
 
 export type TBooking = {
   vendor: Types.ObjectId | TUser; //Owner and Freelancer ID
-  customer: Types.ObjectId | TUser;
+  customer?: Types.ObjectId | TUser;
+
+  customerName?: string; // Walk-in customer's name
+  phone?: string; // Walk-in customer's phone number
 
   freelancerReg?: Types.ObjectId; // target freelancer
   ownerReg?: Types.ObjectId; // target owner
@@ -38,7 +41,7 @@ export type TBooking = {
 
   addOnServices: TAddOnService[];
 
-  email: string;
+  email?: string;
   date: string;
   time: string;
   duration: string;
