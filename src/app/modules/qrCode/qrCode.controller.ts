@@ -21,7 +21,7 @@ const getWalkInDetailsByQRToken = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: 200,
     success: true,
-    message: 'Walk-in details retrieved successfully',
+    message: 'Salon owner detail retrieved successfully',
     data: result,
   });
 });

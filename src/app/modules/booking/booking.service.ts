@@ -194,7 +194,7 @@ const createOnlineBookingIntoDB = async (payload: TBooking, files: any) => {
   return booking;
 };
 
-// Create  Walk-in booking API
+// Create Walk-in booking API
 const createWalkInBookingIntoDB = async (payload: TBooking) => {
   const { qrToken, customerName, phone, service } = payload;
 

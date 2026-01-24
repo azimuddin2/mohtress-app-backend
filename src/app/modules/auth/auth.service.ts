@@ -397,10 +397,9 @@ const logoutUser = async (userId: string) => {
 };
 
 // SOCIAL LOGIN METHODS GOOGLE & APPLE
-
 const googleLogin = async (payload: any) => {
   try {
-    console.log('Google Token:', payload);
+    console.log('Google Token:', payload.token);
 
     if (!payload?.token) {
       throw new AppError(httpStatus.BAD_REQUEST, 'Token is required');

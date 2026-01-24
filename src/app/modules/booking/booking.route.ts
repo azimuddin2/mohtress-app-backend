@@ -18,7 +18,7 @@ router.post(
   BookingControllers.createOnlineBooking,
 );
 
-router.post('/walkin', BookingControllers.createWalkInBooking);
+router.post('/walk-in', BookingControllers.createWalkInBooking);
 
 router.get(
   '/vendor-home',

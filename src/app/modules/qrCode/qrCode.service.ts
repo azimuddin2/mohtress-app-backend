@@ -15,13 +15,12 @@ const generateQRCode = async (ownerId: string) => {
     await owner.save();
   }
 
-  const qrPayload = `${config.server_url}/api/v1/qr-code/walkin/${owner.qrToken}`;
+  const qrPayload = `${config.client_Url}/salon?qrToken=${owner.qrToken}`;
   const qrImage = await QRCode.toDataURL(qrPayload);
 
   return {
     qrToken: owner.qrToken,
     qrImage,
-    qrPayload,
   };
 };
 

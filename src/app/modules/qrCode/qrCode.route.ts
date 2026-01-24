@@ -6,6 +6,6 @@ const router = express.Router();
 
 router.get('/generate/:ownerId', auth('owner'), QRCodeController.generateQR);
 
-router.get('/walkin/:qrToken', QRCodeController.getWalkInDetailsByQRToken);
+router.get('/salon/:qrToken', QRCodeController.getWalkInDetailsByQRToken);
 
 export const QRCodeRoutes = router;
