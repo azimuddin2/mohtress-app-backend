@@ -38,6 +38,8 @@ import { UserServices } from './user.service';
 const signupUser = catchAsync(async (req, res) => {
   const result = await UserServices.signupUserIntoDB(req.body);
 
+  console.log('Signup User Controller:', req.body);
+
   sendResponse(res, {
     statusCode: 201,
     success: true,

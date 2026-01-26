@@ -18,13 +18,13 @@ const userSchema = new Schema<TUser, UserModel>(
       type: String,
       trim: true,
       unique: true,
-      sparse: true,
       validate: {
         validator: function (v: string) {
           if (!v) return true;
-          return /^\+?[0-9]{10,15}$/.test(v);
+          return /^\+[1-9][0-9]{9,14}$/.test(v);
         },
-        message: 'Invalid phone number',
+        message:
+          'Phone number must be in international format (e.g. +17133745074)',
       },
     },
     email: {
