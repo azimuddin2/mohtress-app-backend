@@ -12,6 +12,7 @@ const createBookingValidationSchema = z.object({
   body: z.object({
     vendor: z.string().min(1, 'Vendor is required'),
     customer: z.string().min(1, 'Customer is required').optional(),
+    customerName: z.string().min(1, 'Customer name is required'),
 
     service: z.string().min(1, 'Service is required'),
     serviceType: z.enum([

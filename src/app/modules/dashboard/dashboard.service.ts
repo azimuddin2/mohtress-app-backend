@@ -1,5 +1,6 @@
 import { FreelancerRegistration } from '../freelancerRegistration/freelancerRegistration.model';
 import { OwnerRegistration } from '../ownerRegistration/ownerRegistration.model';
+import { Payment } from '../payment/payment.model';
 
 const getRequestStatsFromDB = async () => {
   // 1. Define Date Ranges
@@ -108,6 +109,48 @@ const getRequestStatsFromDB = async () => {
   };
 };
 
+const getEarningsStatsFromDB = async () => {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const end = new Date();
+  end.setHours(23, 59, 59, 999);
+
+  const result = await Payment.aggregate([
+    {
+      $match: {
+        isDeleted: false,
+        isPaid: true,
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalAdmin: { $sum: '$adminAmount' },
+        todayAdmin: {
+          $sum: {
+            $cond: [
+              {
+                $and: [
+                  { $gte: ['$createdAt', start] },
+                  { $lte: ['$createdAt', end] },
+                ],
+              },
+              '$adminAmount',
+              0,
+            ],
+          },
+        },
+      },
+    },
+  ]);
+
+  const totalEarning = result[0]?.totalAdmin || 0;
+  const todayEarning = result[0]?.todayAdmin || 0;
+
+  return { totalEarning, todayEarning };
+};
+
 export const DashboardService = {
   getRequestStatsFromDB,
+  getEarningsStatsFromDB,
 };

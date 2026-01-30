@@ -13,6 +13,18 @@ const getRequestStats = catchAsync(async (req, res) => {
   });
 });
 
+const getEarningsStats = catchAsync(async (req, res) => {
+  const result = await DashboardService.getEarningsStatsFromDB();
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: 'Earnings Stats retrieved successfully',
+    data: result,
+  });
+});
+
 export const DashboardControllers = {
   getRequestStats,
+  getEarningsStats,
 };

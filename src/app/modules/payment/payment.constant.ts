@@ -18,10 +18,6 @@ export const paymentSearchableFields = [
   'trnId',
   'type',
   'status',
-  'user.fullName',
-  'user.email',
-  'user.phone',
-  'vendor.fullName',
-  'vendor.email',
-  'vendor.phone',
+  'customerName',
+  'customerEmail',
 ];

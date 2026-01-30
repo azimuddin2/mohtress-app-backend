@@ -6,8 +6,11 @@ export type TPaymentStatus = 'pending' | 'paid' | 'refunded' | 'cancelled';
 export type TPaymentType = 'deposit'; // future: 'full', 'withdrawal'
 
 export type TPayment = {
-  user: Types.ObjectId | TUser; // customer
+  customer: Types.ObjectId | TUser; // customer
   vendor: Types.ObjectId | TUser; // stylist
+
+  customerName: string;
+  customerEmail: string;
 
   booking: Types.ObjectId | TBooking;
 

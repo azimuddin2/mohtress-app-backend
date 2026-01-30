@@ -36,6 +36,7 @@ const bookingSchema = new Schema<TBooking>(
     },
     customerName: {
       type: String,
+      required: true,
     },
     phone: {
       type: String,
@@ -86,6 +87,7 @@ const bookingSchema = new Schema<TBooking>(
 
     email: {
       type: String,
+      required: true,
     },
     date: {
       type: String,

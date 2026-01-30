@@ -4,7 +4,7 @@ import { PaymentStatus } from './payment.constant';
 
 const paymentSchema = new Schema<TPayment>(
   {
-    user: {
+    customer: {
       type: Schema.Types.ObjectId,
       ref: 'User',
       required: true,
@@ -12,6 +12,14 @@ const paymentSchema = new Schema<TPayment>(
     vendor: {
       type: Schema.Types.ObjectId,
       ref: 'User',
+      required: true,
+    },
+    customerName: {
+      type: String,
+      required: true,
+    },
+    customerEmail: {
+      type: String,
       required: true,
     },
     booking: {

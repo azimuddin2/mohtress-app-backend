@@ -40,9 +40,12 @@ const createPayment = async (payload: TPayment) => {
     const payment = await Payment.create(
       [
         {
-          user: booking.customer,
+          customer: booking.customer,
           vendor: booking.vendor,
           booking: payload.booking,
+          customerName: booking.customerName || '',
+          customerEmail: booking.email || '',
+          type: 'deposit',
           trnId,
           price: DEPOSIT_AMOUNT,
           adminAmount: DEPOSIT_AMOUNT / 2, // MohTress $5
@@ -59,7 +62,7 @@ const createPayment = async (payload: TPayment) => {
     }
 
     // Create Stripe Customer if missing
-    const customerUser = await User.findById(payment.user).session(session);
+    const customerUser = await User.findById(payment.customer).session(session);
     if (!customerUser) {
       throw new AppError(httpStatus.NOT_FOUND, 'User not found');
     }
@@ -148,7 +151,7 @@ const confirmPayment = async (query: {
       },
       { new: true, session },
     )
-      .populate('user')
+      .populate('customer')
       .populate('vendor');
 
     if (!payment) throw new AppError(httpStatus.NOT_FOUND, 'Payment not found');
@@ -228,7 +231,7 @@ const getAllPaymentsFormDB = async (query: Record<string, unknown>) => {
   const paymentQuery = new QueryBuilder(
     Payment.find({ isDeleted: false, isPaid: true, status: 'paid' })
       .populate({
-        path: 'user',
+        path: 'customer',
         select: 'fullName email phone streetAddress stripeCustomerId ',
       })
       .populate({
@@ -249,9 +252,32 @@ const getAllPaymentsFormDB = async (query: Record<string, unknown>) => {
   return { meta, data };
 };
 
+const getPaymentByIdFromDB = async (id: string) => {
+  const result = await Payment.findById(id)
+    .populate({
+      path: 'customer',
+      select: 'fullName email phone streetAddress stripeCustomerId ',
+    })
+    .populate({
+      path: 'vendor',
+      select: 'fullName email phone streetAddress stripeAccountId',
+    });
+
+  if (!result) {
+    throw new AppError(404, 'This payment transaction not found');
+  }
+
+  if (result.isDeleted) {
+    throw new AppError(400, 'This payment transaction has been deleted');
+  }
+
+  return result;
+};
+
 export const PaymentService = {
   createPayment,
   confirmPayment,
   cancelPayment,
   getAllPaymentsFormDB,
+  getPaymentByIdFromDB,
 };

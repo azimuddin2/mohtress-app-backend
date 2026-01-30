@@ -28,7 +28,7 @@ export type TBooking = {
   vendor: Types.ObjectId | TUser; //Owner and Freelancer ID
   customer?: Types.ObjectId | TUser;
 
-  customerName?: string; // Walk-in customer's name
+  customerName: string; // Walk-in customer's name
   phone?: string; // Walk-in customer's phone number
 
   freelancerReg?: Types.ObjectId | TFreelancerRegistration; // target freelancer

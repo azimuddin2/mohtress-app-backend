@@ -15,4 +15,10 @@ router.get(
   PaymentController.getAllPayments,
 );
 
+router.get(
+  '/transactions/:id',
+  auth('admin', 'sub-admin'),
+  PaymentController.getPaymentById,
+);
+
 export const PaymentRoutes = router;
