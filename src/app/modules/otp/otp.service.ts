@@ -8,6 +8,9 @@ import { createToken } from '../auth/auth.utils';
 import { generateOtp } from '../../utils/generateOtp';
 import { sendEmail } from '../../utils/sendEmail';
 import { sendPhoneOTP, verifyPhoneOTP } from '../../helpers/twilio.helper';
+import { verifyToken } from '../../utils/verifyToken';
+import { Secret } from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 
 const sendOtp = async (payload: TSendOtp) => {
   const { userId, method } = payload;
@@ -257,8 +260,81 @@ const verifyOtp = async (payload: TVerifyOtp) => {
   return { accessToken };
 };
 
+const AdminVerifyOtp = async (token: string, otp: TVerifyOtp) => {
+  if (!token) {
+    throw new AppError(401, 'You are not authorized! Please Login.');
+  }
+
+  const decoded = verifyToken(token, config.jwt_access_secret as string);
+
+  const { email } = decoded;
+
+  const user = await User.findOne({ email: email }).select(
+    'verification isVerified',
+  );
+
+  if (!user) {
+    throw new AppError(404, 'This user is not found!');
+  }
+
+  if (user?.isDeleted === true) {
+    throw new AppError(403, 'This user is deleted!');
+  }
+
+  if (user?.status === 'blocked') {
+    throw new AppError(403, 'This user is blocked!');
+  }
+
+  const verifyExpiresAt = user?.verification?.expiresAt;
+
+  if (!verifyExpiresAt) {
+    throw new AppError(
+      400,
+      'OTP expiration time not found. Please Again Send OTP',
+    );
+  }
+
+  if (new Date() > verifyExpiresAt) {
+    throw new AppError(400, 'OTP has expired. Please resend it');
+  }
+
+  const verifyOtpCode = Number(user?.verification?.otp);
+  if (Number(otp) !== verifyOtpCode) {
+    throw new AppError(400, 'Otp did not match');
+  }
+
+  const updateUser = await User.findByIdAndUpdate(
+    user?._id,
+    {
+      $set: {
+        isVerified: user?.isVerified === false ? true : user?.isVerified,
+        verification: {
+          otp: 0,
+          expiresAt: moment().add(5, 'minute'),
+          status: true,
+        },
+      },
+    },
+    { new: true },
+  ).select('_id fullName email phone role');
+
+  // create token and sent to the client
+  const jwtPayload: TJwtPayload = {
+    userId: user._id.toString(),
+    email: user?.email,
+    role: user?.role,
+  };
+
+  const jwtToken = jwt.sign(jwtPayload, config.jwt_access_secret as Secret, {
+    expiresIn: '5m',
+  });
+
+  return { user: updateUser, token: jwtToken };
+};
+
 export const OtpServices = {
   sendOtp,
-  verifyOtp,
   resendOtp,
+  verifyOtp,
+  AdminVerifyOtp,
 };

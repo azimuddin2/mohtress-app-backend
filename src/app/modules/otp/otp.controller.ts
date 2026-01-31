@@ -35,8 +35,23 @@ const handleVerifyOtp = catchAsync(async (req, res) => {
   });
 });
 
+const handleAdminVerifyOtp = catchAsync(async (req, res) => {
+  const token = req?.headers?.authorization as string;
+  const otp = req.body.otp;
+
+  const result = await OtpServices.AdminVerifyOtp(token, otp);
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: 'Account verified successfully',
+    data: result,
+  });
+});
+
 export const OtpControllers = {
   handleSendOtp,
   handleRendOtp,
   handleVerifyOtp,
+  handleAdminVerifyOtp,
 };

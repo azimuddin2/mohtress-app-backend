@@ -12,16 +12,11 @@ export const BookingRequest: TBookingRequest[] = [
   'decline',
 ];
 
-// export const PaymentStatus: TPaymentStatus[] = [
-//   'pending',
-//   'paid',
-//   'refunded',
-//   'failed',
-// ];
-
 export const bookingSearchableFields = [
   'email',
-  'customer.fullName',
-  'vendor.fullName',
-  'service.name',
+  'customerName',
+  'date',
+  'time',
+  'status',
+  'request',
 ];

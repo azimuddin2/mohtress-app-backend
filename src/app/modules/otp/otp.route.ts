@@ -23,4 +23,10 @@ router.post(
   OtpControllers.handleVerifyOtp,
 );
 
+router.post(
+  '/admin-verify-otp',
+  validateRequest(OtpValidations.adminVerifyOtpValidationSchema),
+  OtpControllers.handleAdminVerifyOtp,
+);
+
 export const OtpRoutes = router;

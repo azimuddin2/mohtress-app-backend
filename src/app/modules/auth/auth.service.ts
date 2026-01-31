@@ -257,9 +257,11 @@ const forgotPassword = async (email: string) => {
     '2m',
   );
 
-  const currentTime = new Date();
   const otp = generateOtp();
-  const expiresAt = moment(currentTime).add(5, 'minute');
+
+  const otpExpiryMinutes = 5; // OTP valid 5 minutes
+  const expiresAt = moment().add(otpExpiryMinutes, 'minutes').toDate();
+
   await User.findByIdAndUpdate(user?._id, {
     verification: {
       otp,
@@ -273,32 +275,57 @@ const forgotPassword = async (email: string) => {
     email,
     'Your OTP for Password Reset',
     `
-  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 24px; border-radius: 10px; border: 1px solid #e0e0e0;">
-    <h2 style="color: #4CAF50; text-align: center; margin-top: 0;">Password Reset OTP</h2>
-    
-    <p style="font-size: 16px; color: #333; text-align: center;">
-      We received a request to reset your password. Use the one-time password (OTP) below:
-    </p>
-
-    <div style="background-color: #f4f4f4; padding: 20px; margin: 20px auto; border-radius: 6px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-      <p style="font-size: 18px; color: #013B23; margin-bottom: 10px;">Your OTP:</p>
-      <p style="font-size: 32px; color: #4CAF50; font-weight: bold; margin: 0;">${otp}</p>
-    </div>
-
-    <p style="font-size: 14px; color: #666; text-align: center; margin-top: 20px;">
-      This OTP is valid until:
-    </p>
-    <p style="font-size: 14px; color: #013B23; text-align: center; font-weight: bold; margin: 0;">
-      ${expiresAt.toLocaleString()}
-    </p>
-
-    <hr style="margin: 30px 0; border: none; border-top: 1px solid #e0e0e0;" />
-
-    <p style="font-size: 13px; color: #999; text-align: center;">
-      If you did not request this, please ignore this email.
-    </p>
-  </div>
-  `,
+     <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reset Your Password</title>
+</head>
+<body style="margin:0; padding:0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f4; padding:30px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff; padding:40px; border-radius:8px; box-shadow:0 0 10px rgba(0,0,0,0.05); max-width:600px; width:100%;">
+          <tr>
+            <td align="center" style="padding-bottom:20px;">
+              <h2 style="color:#4625A0; margin:0;">Reset Your Password</h2>
+            </td>
+          </tr>
+          <tr>
+            <td style="font-size:16px; color:#333333; padding-bottom:20px; text-align:center;">
+              <p style="margin:0;">Use the OTP below to reset your password. Do not share this code with anyone.</p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:20px 0;">
+              <div style="display:inline-block; padding:15px 30px; font-size:24px; font-weight:bold; color:#ffffff; background-color:#4625A0; border-radius:6px; letter-spacing:2px;">
+                ${otp}
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="font-size:14px; color:#666666; text-align:center; padding-bottom:20px;">
+              <p style="margin:0;">This OTP is valid for <strong>${otpExpiryMinutes} minutes</strong> (expires at <strong>${expiresAt.toLocaleTimeString()}</strong>).</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="font-size:13px; color:#999999; text-align:center;">
+              <p style="margin:0;">If you did not request a password reset, you can safely ignore this email.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding-top:30px; text-align:center;">
+              <p style="font-size:12px; color:#cccccc; margin:0;">&copy; ${new Date().getFullYear()} Your Company Name. All rights reserved.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+      `,
   );
 
   return { email, accessToken };
