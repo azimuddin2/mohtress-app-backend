@@ -129,23 +129,48 @@ const getAllOwnerRegistrationFromDB = async (
 ) => {
   const baseQuery: Record<string, any> = { isDeleted: false };
 
-  // ⭐ Single subcategory filter
+  // 🔍 Build service filter
+  const serviceFilter: Record<string, any> = { isDeleted: false };
+
+  // ⭐ Subcategory filter
   if (query.subcategory) {
-    const services = await OwnerService.find({
-      subcategory: query.subcategory,
-      isDeleted: false,
-    }).select('_id');
-
-    const serviceIds = services.map((s) => s._id);
-
-    // Apply filter even if serviceIds is empty
-    baseQuery.services = { $in: serviceIds };
-
-    // Remove from query to avoid conflicts with QueryBuilder.filter()
+    serviceFilter.subcategory = query.subcategory;
     delete query.subcategory;
   }
 
-  // 🔹 Use QueryBuilder exactly like before
+  // ⭐ Service name filter (partial match)
+  if (query.serviceName) {
+    const serviceNames = Array.isArray(query.serviceName)
+      ? query.serviceName
+      : String(query.serviceName).split(',');
+
+    serviceFilter.name = {
+      $in: serviceNames.map((name) => new RegExp(name.trim(), 'i')),
+    };
+
+    delete query.serviceName;
+  }
+
+  // ⭐ Price range filter
+  if (query.minPrice || query.maxPrice) {
+    serviceFilter.price = {};
+    if (query.minPrice) serviceFilter.price.$gte = Number(query.minPrice);
+    if (query.maxPrice) serviceFilter.price.$lte = Number(query.maxPrice);
+
+    delete query.minPrice;
+    delete query.maxPrice;
+  }
+
+  // 🔗 If any service-related filter exists
+  if (Object.keys(serviceFilter).length > 1) {
+    const services = await OwnerService.find(serviceFilter).select('_id');
+    const serviceIds = services.map((s) => s._id);
+
+    // Apply even if empty (returns empty result)
+    baseQuery.services = { $in: serviceIds };
+  }
+
+  // 🔹 QueryBuilder (unchanged behavior)
   const ownerRegistrationQuery = new QueryBuilder(
     OwnerRegistration.find(baseQuery)
       .populate({

@@ -1,5 +1,6 @@
 import { ObjectId, Types } from 'mongoose';
 import { TUser } from '../user/user.interface';
+import { TOwnerService } from '../ownerService/ownerService.interface';
 
 export type TApprovalStatus = 'pending' | 'approved' | 'rejected';
 
@@ -30,7 +31,7 @@ export type TOwnerRegistration = {
     streetAddress?: string;
   };
 
-  services: Types.ObjectId[];
+  services: Types.ObjectId[] | TOwnerService[];
   reviews: Types.ObjectId[];
   avgRating?: number;
 

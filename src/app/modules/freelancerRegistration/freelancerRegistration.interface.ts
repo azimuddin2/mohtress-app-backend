@@ -1,5 +1,6 @@
 import { ObjectId, Types } from 'mongoose';
 import { TUser } from '../user/user.interface';
+import { TFreelancerService } from '../freelancerService/freelancerService.interface';
 
 export type TApprovalStatus = 'pending' | 'approved' | 'rejected';
 
@@ -37,7 +38,7 @@ export type TFreelancerRegistration = {
   postalCode: number;
   country: string;
 
-  services: Types.ObjectId[];
+  services: Types.ObjectId[] | TFreelancerService[];
 
   reviews?: Types.ObjectId[];
   avgRating?: number;

@@ -6,4 +6,4 @@ export const ApprovalStatus: TApprovalStatus[] = [
   'rejected',
 ];
 
-export const OwnerSearchableFields = ['salonName', 'about'];
+export const OwnerSearchableFields = ['salonName', 'about', 'notes'];

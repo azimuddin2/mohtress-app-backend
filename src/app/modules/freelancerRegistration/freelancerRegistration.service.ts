@@ -125,24 +125,80 @@ const createFreelancerRegistrationIntoDB = async (
 const getAllFreelancersFromDB = async (query: Record<string, unknown>) => {
   const baseQuery: Record<string, any> = { isDeleted: false };
 
-  // ⭐ Single subcategory filter — EXACT SAME PATTERN FOLLOWED
+  /**
+   * 🔍 Service-level filter (FreelancerService)
+   * These fields DO NOT exist in FreelancerRegistration,
+   * so they must be handled here and removed from query.
+   */
+  const serviceFilter: Record<string, any> = {
+    isDeleted: false,
+    status: 'available',
+  };
+
+  // ⭐ Availability filter (array field)
+  if (query.availability) {
+    const availabilityValues = Array.isArray(query.availability)
+      ? query.availability
+      : String(query.availability).split(',');
+
+    baseQuery.availability = {
+      $in: availabilityValues.map((v) => v.trim()),
+    };
+
+    delete query.availability;
+  }
+
+  // ⭐ Subcategory filter
   if (query.subcategory) {
-    const services = await FreelancerService.find({
-      subcategory: query.subcategory,
-      isDeleted: false,
-    }).select('_id');
-
-    const serviceIds = services.map((s) => s._id);
-
-    // Always apply the filter — even if empty
-    baseQuery.services = { $in: serviceIds };
-
-    // Prevent QueryBuilder.filter() conflict
+    serviceFilter.subcategory = query.subcategory;
     delete query.subcategory;
   }
 
-  // 🔹 Use QueryBuilder EXACTLY like your old structure
-  const ownerRegistrationQuery = new QueryBuilder(
+  // ⭐ Multiple service name filter (Hair,Facial,Spa)
+  if (query.serviceName) {
+    const serviceNames = Array.isArray(query.serviceName)
+      ? query.serviceName
+      : String(query.serviceName).split(',');
+
+    serviceFilter.name = {
+      $in: serviceNames.map((name) => new RegExp(name.trim(), 'i')),
+    };
+
+    delete query.serviceName;
+  }
+
+  // ⭐ Price range filter (minPrice / maxPrice)
+  if (query.minPrice || query.maxPrice) {
+    serviceFilter.price = {};
+
+    if (query.minPrice) {
+      serviceFilter.price.$gte = Number(query.minPrice);
+    }
+
+    if (query.maxPrice) {
+      serviceFilter.price.$lte = Number(query.maxPrice);
+    }
+
+    delete query.minPrice;
+    delete query.maxPrice;
+  }
+
+  /**
+   * 🔗 Apply service filter only when
+   * service-related conditions exist
+   */
+  if (Object.keys(serviceFilter).length > 2) {
+    const services = await FreelancerService.find(serviceFilter).select('_id');
+    const serviceIds = services.map((s) => s._id);
+
+    // Always apply filter (even if empty)
+    baseQuery.services = { $in: serviceIds };
+  }
+
+  /**
+   * 🔹 QueryBuilder (UNCHANGED)
+   */
+  const freelancerQuery = new QueryBuilder(
     FreelancerRegistration.find(baseQuery)
       .populate({
         path: 'user',
@@ -162,8 +218,8 @@ const getAllFreelancersFromDB = async (query: Record<string, unknown>) => {
     .paginate()
     .fields();
 
-  const meta = await ownerRegistrationQuery.countTotal();
-  const result = await ownerRegistrationQuery.modelQuery;
+  const meta = await freelancerQuery.countTotal();
+  const result = await freelancerQuery.modelQuery;
 
   return { meta, result };
 };
