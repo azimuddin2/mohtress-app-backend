@@ -188,24 +188,28 @@ const getBookingServicingNowPanel = catchAsync(async (req, res) => {
 });
 
 const getPendingBookingServices = catchAsync(async (req, res) => {
-  const result = await BookingServices.getPendingBookingServicesFromDB();
+  const result = await BookingServices.getPendingBookingServicesFromDB(
+    req.query,
+  );
 
   sendResponse(res, {
     statusCode: 200,
     success: true,
     message: 'Pending booking services retrieved successfully',
-    data: result,
+    meta: result.meta,
+    data: result.data,
   });
 });
 
 const getUpcomingBookings = catchAsync(async (req, res) => {
-  const result = await BookingServices.getUpcomingBookingsFromDB();
+  const result = await BookingServices.getUpcomingBookingsFromDB(req.query);
 
   sendResponse(res, {
     statusCode: 200,
     success: true,
     message: 'Upcoming bookings retrieved successfully',
-    data: result,
+    meta: result.meta,
+    data: result.result,
   });
 });
 

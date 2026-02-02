@@ -902,8 +902,10 @@ const getBookingServicingNowPanelFromDB = async (
   };
 };
 
-const getPendingBookingServicesFromDB = async () => {
-  const pendingBookings = await Booking.find({
+const getPendingBookingServicesFromDB = async (
+  query: Record<string, unknown>,
+) => {
+  const baseQuery = Booking.find({
     isDeleted: false,
     request: 'pending',
   })
@@ -928,20 +930,32 @@ const getPendingBookingServicesFromDB = async () => {
       path: 'customer',
       select: '_id fullName email image',
     })
-    .sort({ createdAt: -1 })
     .select(
       '-__v -isDeleted -addOnServices -notes -specialist -images -qrToken -queueNumber -bookingSource -status',
     );
 
-  return pendingBookings;
+  // Use QueryBuilder exactly like your other functions
+  const bookingQuery = new QueryBuilder(baseQuery, query)
+    .search(bookingSearchableFields)
+    .filter()
+    .sort()
+    .paginate()
+    .fields();
+
+  const meta = await bookingQuery.countTotal();
+  const data = await bookingQuery.modelQuery;
+
+  return { meta, data };
 };
 
-const getUpcomingBookingsFromDB = async () => {
+const getUpcomingBookingsFromDB = async (query: Record<string, unknown>) => {
   const today = dayjs().startOf('day');
 
-  const results = await Booking.find({
+  // Base query: approved bookings
+  const baseQuery = Booking.find({
     isDeleted: false,
     request: 'approved',
+    date: { $gte: today.toDate() }, // only future dates
   })
     .populate({
       path: 'service',
@@ -964,32 +978,35 @@ const getUpcomingBookingsFromDB = async () => {
       path: 'customer',
       select: '_id fullName email image',
     })
-    .sort({ createdAt: -1 })
     .select(
       '-__v -isDeleted -addOnServices -notes -specialist -images -qrToken -queueNumber -bookingSource -status',
     );
 
-  const upcomingList: any[] = [];
+  // 🔹 QueryBuilder
+  const bookingQuery = new QueryBuilder(baseQuery, query)
+    .search(bookingSearchableFields)
+    .filter()
+    .sort()
+    .paginate()
+    .fields();
 
-  for (const doc of results) {
+  const meta = await bookingQuery.countTotal();
+  const result = await bookingQuery.modelQuery;
+
+  // 🔥 Additional sorting by date + slot (optional if you want extra precision)
+  const upcomingList = result.map((doc: any) => {
     const booking = doc.toObject();
-    const bookingDate = dayjs(booking.date);
+    booking.dashboardStatus = 'upcoming';
+    return booking;
+  });
 
-    // ✅ only future bookings
-    if (bookingDate.isAfter(today, 'day')) {
-      booking.dashboardStatus = 'upcoming';
-      upcomingList.push(booking);
-    }
-  }
-
-  // 🔥 sort by date then slot
   upcomingList.sort((a, b) => {
     const dateDiff = dayjs(a.date).diff(dayjs(b.date));
     if (dateDiff !== 0) return dateDiff;
     return (a.slotStart ?? 0) - (b.slotStart ?? 0);
   });
 
-  return upcomingList;
+  return { meta, result: upcomingList };
 };
 
 export const BookingServices = {
