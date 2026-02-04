@@ -15,7 +15,6 @@ import dayjs from 'dayjs';
 import { OwnerRegistration } from '../ownerRegistration/ownerRegistration.model';
 import { FreelancerRegistration } from '../freelancerRegistration/freelancerRegistration.model';
 
-// Create Online Booking API
 const createOnlineBookingIntoDB = async (payload: TBooking, files: any) => {
   const { customer, service, vendor, date, time, specialist, serviceType } =
     payload;
@@ -25,10 +24,7 @@ const createOnlineBookingIntoDB = async (payload: TBooking, files: any) => {
   // -------------------------------
   const timeRegex = /^\d{1,2}:\d{2} (AM|PM) - \d{1,2}:\d{2} (AM|PM)$/;
   if (!timeRegex.test(time)) {
-    throw new AppError(
-      400,
-      'Invalid time format. Use: "hh:mm AM - hh:mm PM" (Example: 05:00 PM - 06:00 PM)',
-    );
+    throw new AppError(400, 'Invalid time format. Use: "hh:mm AM - hh:mm PM"');
   }
 
   // -------------------------------
@@ -38,9 +34,8 @@ const createOnlineBookingIntoDB = async (payload: TBooking, files: any) => {
     const [timeStr, mod] = t.trim().split(' ');
     let [h, m] = timeStr.split(':').map(Number);
 
-    if (h < 1 || h > 12 || m < 0 || m > 59) {
+    if (h < 1 || h > 12 || m < 0 || m > 59)
       throw new AppError(400, 'Invalid time range values');
-    }
 
     if (mod === 'PM' && h !== 12) h += 12;
     if (mod === 'AM' && h === 12) h = 0;
@@ -52,34 +47,23 @@ const createOnlineBookingIntoDB = async (payload: TBooking, files: any) => {
   const slotStart = parseToMinutes(slotStartStr);
   const slotEnd = parseToMinutes(slotEndStr);
 
-  // -------------------------------
-  // 3️⃣ Validate Start < End
-  // -------------------------------
-  if (slotEnd <= slotStart) {
+  if (slotEnd <= slotStart)
     throw new AppError(400, 'End time must be later than start time');
-  }
 
-  // -------------------------------
-  // 4️⃣ Auto duration (hours)
-  // -------------------------------
+  payload.slotStart = slotStart;
+  payload.slotEnd = slotEnd;
   payload.duration = ((slotEnd - slotStart) / 60).toString();
 
   // -------------------------------
-  // 5️⃣ Validate Date
+  // 3️⃣ Validate Date
   // -------------------------------
   const today = new Date();
   const bookingDate = new Date(date);
-
-  if (bookingDate < new Date(today.toDateString())) {
+  if (bookingDate < new Date(today.toDateString()))
     throw new AppError(400, 'Cannot create booking for a past date');
-  }
-
-  // Attach slots into payload
-  payload.slotStart = slotStart;
-  payload.slotEnd = slotEnd;
 
   // -------------------------------
-  // 6️⃣ Validate Customer + Vendor
+  // 4️⃣ Validate Customer & Vendor
   // -------------------------------
   const customerExists = await User.findById(customer);
   if (!customerExists) throw new AppError(404, 'Customer does not exist');
@@ -90,13 +74,12 @@ const createOnlineBookingIntoDB = async (payload: TBooking, files: any) => {
   const vendorRole = vendorExists.role; // owner | freelancer
 
   // -------------------------------
-  // 7️⃣ Validate Service Type
+  // 5️⃣ Validate Service Type
   // -------------------------------
   const serviceModelMap: any = {
     [SERVICE_MODEL_TYPE.OwnerService]: OwnerService,
     [SERVICE_MODEL_TYPE.FreelancerService]: FreelancerService,
   };
-
   const ServiceModel = serviceModelMap[serviceType];
   if (!ServiceModel) throw new AppError(400, 'Invalid service type');
 
@@ -104,20 +87,47 @@ const createOnlineBookingIntoDB = async (payload: TBooking, files: any) => {
   if (!serviceExists) throw new AppError(404, 'Service does not exist');
 
   // -------------------------------
-  // 7️⃣.5️⃣ Assign ownerReg / freelancerReg
+  // 6️⃣ Assign Registration & Check Opening Hours for Owners
   // -------------------------------
   if (serviceType === SERVICE_MODEL_TYPE.OwnerService) {
     const ownerRegistration = await OwnerRegistration.findOne({
       user: vendor,
       isDeleted: false,
     });
-
-    if (!ownerRegistration) {
+    if (!ownerRegistration)
       throw new AppError(404, 'Owner registration not found');
-    }
 
     payload.ownerReg = ownerRegistration._id;
     payload.freelancerReg = undefined;
+
+    // Check opening hours
+    const bookingDay = bookingDate.toLocaleDateString('en-US', {
+      weekday: 'long',
+    });
+    const todayOpening = ownerRegistration.openingHours.find(
+      (h) => h.day === bookingDay && h.enabled,
+    );
+
+    if (!todayOpening)
+      throw new AppError(400, 'The salon is closed on this day');
+
+    const parseOpeningMinutes = (time: string) => {
+      const [t, mod] = time.split(' ');
+      let [h, m] = t.split(':').map(Number);
+      if (mod === 'PM' && h !== 12) h += 12;
+      if (mod === 'AM' && h === 12) h = 0;
+      return h * 60 + m;
+    };
+
+    const openingMinutes = parseOpeningMinutes(todayOpening.openTime);
+    const closingMinutes = parseOpeningMinutes(todayOpening.closeTime);
+
+    if (slotStart < openingMinutes || slotEnd > closingMinutes) {
+      throw new AppError(
+        400,
+        `Bookings are available between ${todayOpening.openTime} and ${todayOpening.closeTime}`,
+      );
+    }
   }
 
   if (serviceType === SERVICE_MODEL_TYPE.FreelancerService) {
@@ -125,29 +135,22 @@ const createOnlineBookingIntoDB = async (payload: TBooking, files: any) => {
       user: vendor,
       isDeleted: false,
     });
-
-    if (!freelancerRegistration) {
+    if (!freelancerRegistration)
       throw new AppError(404, 'Freelancer registration not found');
-    }
 
     payload.freelancerReg = freelancerRegistration._id;
     payload.ownerReg = undefined;
   }
 
   // -------------------------------
-  // 8️⃣ Specialist Logic
+  // 7️⃣ Specialist Logic
   // -------------------------------
   if (vendorRole === 'owner') {
-    if (!specialist) {
+    if (!specialist)
       throw new AppError(400, 'Specialist ID is required for owner vendor');
-    }
-
     const dbSpecialist = await Specialist.findById(specialist);
-    if (!dbSpecialist) {
-      throw new AppError(404, 'Specialist does not exist');
-    }
+    if (!dbSpecialist) throw new AppError(404, 'Specialist does not exist');
 
-    // Specialist conflict check using specialist _id
     const specialistConflict = await Booking.findOne({
       specialist,
       date,
@@ -156,19 +159,16 @@ const createOnlineBookingIntoDB = async (payload: TBooking, files: any) => {
       slotEnd: { $gt: slotStart },
     });
 
-    if (specialistConflict) {
+    if (specialistConflict)
       throw new AppError(409, 'Specialist is not available at this time');
-    }
   }
 
-  if (vendorRole === 'freelancer') {
-    if (specialist) {
-      throw new AppError(400, 'Freelancers cannot assign specialists');
-    }
+  if (vendorRole === 'freelancer' && specialist) {
+    throw new AppError(400, 'Freelancers cannot assign specialists');
   }
 
   // -------------------------------
-  // 9️⃣ Vendor Conflict Check
+  // 8️⃣ Vendor Conflict Check
   // -------------------------------
   const vendorConflict = await Booking.findOne({
     vendor,
@@ -177,13 +177,11 @@ const createOnlineBookingIntoDB = async (payload: TBooking, files: any) => {
     slotStart: { $lt: slotEnd },
     slotEnd: { $gt: slotStart },
   });
-
-  if (vendorConflict) {
+  if (vendorConflict)
     throw new AppError(409, 'Vendor already has a booking at this time');
-  }
 
   // -------------------------------
-  // 🔟 File Upload
+  // 9️⃣ File Upload
   // -------------------------------
   if (files?.images?.length) {
     const imgsArray = files.images.map((img: any) => ({
@@ -195,14 +193,18 @@ const createOnlineBookingIntoDB = async (payload: TBooking, files: any) => {
     throw new AppError(400, 'At least one image is required');
   }
 
-  // 1️⃣1️⃣ Booking save
+  // -------------------------------
+  // 🔟 Save Booking
+  // -------------------------------
   const booking = await Booking.create(payload);
 
-  // 1️⃣2️⃣ Notification (customer + vendor)
+  // -------------------------------
+  // 1️⃣1️⃣ Notifications
+  // -------------------------------
   if (customerExists?.fcmToken) {
     await sendNotification([customerExists.fcmToken], {
       title: 'Booking Confirmed',
-      message: `Your booking for service ${serviceExists.name} on ${payload.date} at ${payload.time} is confirmed!`,
+      message: `Your booking for ${serviceExists.name} on ${payload.date} at ${payload.time} is confirmed!`,
       receiver: customerExists._id as any,
       receiverEmail: customerExists.email,
       receiverRole: customerExists.role,
@@ -229,64 +231,102 @@ const createOnlineBookingIntoDB = async (payload: TBooking, files: any) => {
 const createWalkInBookingIntoDB = async (payload: TBooking) => {
   const { qrToken, customerName, phone, email, service, specialist } = payload;
 
-  // 1️⃣ Validate QR token & service
+  // 1️⃣ Validate Owner
   const owner = await OwnerRegistration.findOne({ qrToken });
-  if (!owner) throw new AppError(404, 'Invalid QR code');
+  if (!owner) {
+    throw new AppError(404, 'Invalid QR code');
+  }
 
+  // 2️⃣ Validate Service
   const getService = await OwnerService.findById(service);
-  if (!getService) throw new AppError(404, 'Service not found');
+  if (!getService) {
+    throw new AppError(404, 'Service not found');
+  }
 
-  const serviceDuration = parseInt(getService.time, 10); // in minutes
+  const serviceDuration = parseInt(getService.time, 10);
 
   if (!specialist) throw new AppError(400, 'Specialist is required');
 
-  // 2️⃣ Validate specialist
+  // 3️⃣ Validate Specialist
   const dbSpecialist = await Specialist.findOne({
     _id: specialist,
     owner: owner.user,
     isDeleted: false,
   });
-  if (!dbSpecialist) throw new AppError(404, 'Specialist not found');
+  if (!dbSpecialist) {
+    throw new AppError(404, 'Specialist not found');
+  }
 
-  // 3️⃣ Setup date & time
+  // 4️⃣ Prepare today's date & weekday
   const today = new Date().toISOString().split('T')[0];
+  const todayDay = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+
+  // 5️⃣ Get today's opening hours
+  const todayOpening = owner.openingHours.find(
+    (h) => h.day === todayDay && h.enabled,
+  );
+  if (!todayOpening) {
+    throw new AppError(
+      400,
+      'The salon is closed today. Please visit us on our next business day.',
+    );
+  }
+
+  // Convert "09:00 AM" or "08:00 PM" to minutes
+  const parseTimeToMinutes = (time: string) => {
+    if (time.toLowerCase() === 'closed') return null;
+    const [t, mod] = time.split(' ');
+    let [h, m] = t.split(':').map(Number);
+    if (mod === 'PM' && h !== 12) h += 12;
+    if (mod === 'AM' && h === 12) h = 0;
+    return h * 60 + m;
+  };
+
+  const openingMinutes = parseTimeToMinutes(todayOpening.openTime)!;
+  const closingMinutes = parseTimeToMinutes(todayOpening.closeTime)!;
+
+  // 6️⃣ Current time in minutes
   const now = new Date();
   const nowInMinutes = now.getHours() * 60 + now.getMinutes();
 
-  // 4️⃣ Define fixed hourly slots
-  const slots = [];
-  for (let h = 9; h < 22; h++) {
-    const start = h * 60;
-    const end = start + 60;
-    slots.push({ start, end });
-  }
-
-  // 5️⃣ Get busy bookings for the specialist today
+  // 7️⃣ Get busy bookings for today (both online and walk-in)
   const busyBookings = await Booking.find({
     specialist,
     date: today,
     isDeleted: false,
   }).sort({ slotStart: 1 });
 
-  // 6️⃣ Find next available slot
-  let chosenSlot = null;
-  for (const slot of slots) {
-    if (slot.end <= nowInMinutes) continue; // skip past slots
+  // 8️⃣ Generate available slots (FIXED)
+  const slots = [];
 
-    // check conflicts
+  for (
+    let start = openingMinutes;
+    start + serviceDuration <= closingMinutes;
+    start += serviceDuration
+  ) {
+    // ❗ Skip slots that already started
+    if (start < nowInMinutes) continue;
+
     const conflict = busyBookings.find(
-      (b) => b.slotStart < slot.end && b.slotEnd > slot.start,
+      (b) => b.slotStart < start + serviceDuration && b.slotEnd > start,
     );
 
-    if (!conflict && slot.end - slot.start >= serviceDuration) {
-      chosenSlot = slot;
-      break;
+    if (!conflict) {
+      slots.push({ start, end: start + serviceDuration });
     }
   }
 
-  if (!chosenSlot) throw new AppError(400, 'No available slot today');
+  if (slots.length === 0) {
+    throw new AppError(
+      400,
+      'All slots for today are fully booked or past. Please try a later time or another day.',
+    );
+  }
 
-  // 7️⃣ Convert slot minutes to time string
+  // 9️⃣ Pick the first available slot
+  const chosenSlot = slots[0];
+
+  // 🔟 Convert to human-readable time
   const formatTime = (minutes: number) => {
     let h = Math.floor(minutes / 60);
     let m = minutes % 60;
@@ -296,11 +336,9 @@ const createWalkInBookingIntoDB = async (payload: TBooking) => {
     return `${h}:${mm} ${ampm}`;
   };
 
-  const timeString = `${formatTime(chosenSlot.start)} - ${formatTime(
-    chosenSlot.end,
-  )}`;
+  const timeString = `${formatTime(chosenSlot.start)} - ${formatTime(chosenSlot.end)}`;
 
-  // 8️⃣ Queue number
+  // 1️⃣1️⃣ Queue number
   const queueNumber =
     (await Booking.countDocuments({
       vendor: owner.user,
@@ -308,7 +346,7 @@ const createWalkInBookingIntoDB = async (payload: TBooking) => {
       isDeleted: false,
     })) + 1;
 
-  // 9️⃣ Create booking
+  // 1️⃣2️⃣ Create booking
   const booking = await Booking.create({
     vendor: owner.user,
     customer: null,
@@ -327,8 +365,6 @@ const createWalkInBookingIntoDB = async (payload: TBooking) => {
     duration: getService.time,
     totalPrice: getService.price,
     request: 'approved',
-    isPaid: true,
-    isDeleted: false,
   });
 
   return booking;

@@ -104,7 +104,7 @@ const bookingSchema = new Schema<TBooking>(
     specialist: {
       type: Schema.Types.ObjectId,
       ref: 'Specialist',
-      required: true,
+      required: false,
     },
     serviceLocation: {
       type: String,
