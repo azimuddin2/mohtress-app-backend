@@ -232,7 +232,7 @@ const getAllPaymentsFormDB = async (query: Record<string, unknown>) => {
     Payment.find({ isDeleted: false, isPaid: true, status: 'paid' })
       .populate({
         path: 'customer',
-        select: 'fullName email phone streetAddress stripeCustomerId ',
+        select: 'fullName email phone streetAddress image stripeCustomerId ',
       })
       .populate({
         path: 'vendor',
@@ -256,7 +256,7 @@ const getPaymentByIdFromDB = async (id: string) => {
   const result = await Payment.findById(id)
     .populate({
       path: 'customer',
-      select: 'fullName email phone streetAddress stripeCustomerId ',
+      select: 'fullName email phone streetAddress image stripeCustomerId ',
     })
     .populate({
       path: 'vendor',

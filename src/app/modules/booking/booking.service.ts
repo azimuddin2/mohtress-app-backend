@@ -1040,13 +1040,13 @@ const getPendingBookingServicesFromDB = async (
 };
 
 const getUpcomingBookingsFromDB = async (query: Record<string, unknown>) => {
-  const today = dayjs().startOf('day');
+  const todayStr = dayjs().format('YYYY-MM-DD');
 
   // Base query: approved bookings
   const baseQuery = Booking.find({
     isDeleted: false,
     request: 'approved',
-    date: { $gte: today.toDate() }, // only future dates
+    date: { $gte: todayStr }, // only future dates
   })
     .populate({
       path: 'service',
@@ -1067,7 +1067,7 @@ const getUpcomingBookingsFromDB = async (query: Record<string, unknown>) => {
     })
     .populate({
       path: 'customer',
-      select: '_id fullName email image',
+      select: '_id  email image',
     })
     .select(
       '-__v -isDeleted -addOnServices -notes -specialist -images -qrToken -queueNumber -bookingSource -status',

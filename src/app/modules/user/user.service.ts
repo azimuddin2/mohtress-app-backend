@@ -338,9 +338,15 @@ const createCustomerByAdminIntoDB = async (payload: TUser) => {
   const { fullName, email, phone } = payload;
 
   // 1️⃣ Check customer already exists
-  const isExistUser = await User.findOne({ email });
+  const isExistUser = await User.findOne({ email }).select(
+    '_id fullName email phone image role status',
+  );
+
   if (isExistUser) {
-    throw new AppError(409, `${email} already exists.`);
+    return {
+      message: 'User already exists.',
+      user: isExistUser,
+    };
   }
 
   // 2️⃣ Generate STRONG password (Zod compatible)
@@ -388,7 +394,7 @@ const createCustomerByAdminIntoDB = async (payload: TUser) => {
 
     <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 16px 0;">
       <p><strong>Email:</strong> ${email}</p>
-      <p><strong>Temporary Password:</strong> ${password}</p>
+      <p><strong>Password:</strong> ${password}</p>
     </div>
 
     <p style="color: #b91c1c;">
@@ -414,7 +420,10 @@ const createCustomerByAdminIntoDB = async (payload: TUser) => {
   `,
   );
 
-  return newCustomer;
+  return {
+    message: 'Customer account created successfully.',
+    user: newCustomer,
+  };
 };
 
 const getAllUsersFromDB = async (query: Record<string, unknown>) => {

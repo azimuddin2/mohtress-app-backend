@@ -54,8 +54,8 @@ const createCustomerByAdmin = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: 201,
     success: true,
-    message: 'Customer account created successfully',
-    data: result,
+    message: result.message,
+    data: result.user,
   });
 });
 

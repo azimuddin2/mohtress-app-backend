@@ -1,5 +1,3 @@
-// Helper: convert current time → minutes
-
 import { sendEmail } from '../../utils/sendEmail';
 import { TUser } from '../user/user.interface';
 import { User } from '../user/user.model';
@@ -72,7 +70,7 @@ export const createCustomerIntoDB = async (payload: TUser, session?: any) => {
  
      <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 16px 0;">
        <p><strong>Email:</strong> ${email}</p>
-       <p><strong>Temporary Password:</strong> ${password}</p>
+       <p><strong>Password:</strong> ${password}</p>
      </div>
  
      <p style="color: #b91c1c;">
