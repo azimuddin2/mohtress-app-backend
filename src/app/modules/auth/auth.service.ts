@@ -1,6 +1,7 @@
 import AppError from '../../errors/AppError';
 import {
   TChangePassword,
+  TForgotPassword,
   TJwtPayload,
   TLoginUser,
   TResetPassword,
@@ -21,6 +22,7 @@ import { sendNotification } from '../notification/notification.utils';
 import httpStatus from 'http-status';
 import { Login_With, USER_ROLE } from '../user/user.constant';
 import admin from '../../utils/firebase';
+import { sendPhoneOTP } from '../../helpers/twilio.helper';
 
 const loginUser = async (payload: TLoginUser) => {
   // 1️⃣ Find user and populate profiles
@@ -228,22 +230,21 @@ const changePassword = async (
   return null;
 };
 
-const forgotPassword = async (email: string) => {
-  const user = await User.isUserExistsByEmail(email);
-
-  if (!user) {
-    throw new AppError(404, 'This user is not found!');
+const forgotPassword = async (payload: TForgotPassword) => {
+  const { email, phone } = payload;
+  if (!email && !phone) {
+    throw new AppError(400, 'Email or phone is required');
   }
 
-  if (user?.isDeleted === true) {
-    throw new AppError(403, 'This user account is deleted!');
-  }
+  // Find user
+  const user = email
+    ? await User.isUserExistsByEmail(email)
+    : await User.isUserExistsByPhone(phone);
 
-  if (user?.status === 'blocked') {
-    throw new AppError(403, 'This user is blocked!');
-  }
+  if (!user) throw new AppError(404, 'User not found');
+  if (user.isDeleted) throw new AppError(403, 'Account deleted');
+  if (user.status === 'blocked') throw new AppError(403, 'Account blocked');
 
-  // create token and sent to the client
   const jwtPayload: TJwtPayload = {
     userId: user._id.toString(),
     name: user?.fullName,
@@ -257,24 +258,24 @@ const forgotPassword = async (email: string) => {
     '2m',
   );
 
-  const otp = generateOtp();
-
-  const otpExpiryMinutes = 5; // OTP valid 5 minutes
+  const otpExpiryMinutes = 5;
   const expiresAt = moment().add(otpExpiryMinutes, 'minutes').toDate();
 
-  await User.findByIdAndUpdate(user?._id, {
-    verification: {
+  if (email) {
+    const otp = generateOtp();
+    user.verification = {
       otp,
       expiresAt,
-      status: true,
-      isPasswordReset: true,
-    },
-  });
+      status: false,
+    };
 
-  await sendEmail(
-    email,
-    'Your OTP for Password Reset',
-    `
+    user.verificationMethod = 'email';
+    await user.save();
+
+    await sendEmail(
+      email,
+      'Your OTP for Password Reset',
+      `
      <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -326,9 +327,20 @@ const forgotPassword = async (email: string) => {
 </body>
 </html>
       `,
-  );
+    );
 
-  return { email, accessToken };
+    return { identifier: email, userId: user._id, accessToken };
+  } else if (phone) {
+    // Twilio OTP
+    user.verificationMethod = 'phone';
+    await user.save();
+
+    const result = await sendPhoneOTP(phone);
+    if (!result.success)
+      throw new AppError(500, result.error || 'Failed to send OTP');
+
+    return { identifier: phone, userId: user._id, accessToken };
+  }
 };
 
 const resetPassword = async (token: string, payload: TResetPassword) => {

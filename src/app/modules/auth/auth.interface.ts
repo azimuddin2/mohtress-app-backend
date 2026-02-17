@@ -17,6 +17,11 @@ export type TJwtPayload = {
   exp?: number;
 };
 
+export type TForgotPassword = {
+  email: string;
+  phone: string;
+};
+
 export type TChangePassword = {
   oldPassword: string;
   newPassword: string;

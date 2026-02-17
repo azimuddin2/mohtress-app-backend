@@ -44,6 +44,7 @@ class StripeServices<T> {
         account: accountId,
         return_url: returnUrl,
         refresh_url: refreshUrl,
+
         type: 'account_onboarding',
       });
 

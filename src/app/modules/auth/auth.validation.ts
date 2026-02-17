@@ -62,9 +62,15 @@ const forgotPasswordValidationSchema = z.object({
   body: z.object({
     email: z
       .string({
-        required_error: 'Email is required',
+        required_error: 'Email or phone is required',
       })
-      .email('Invalid email address'),
+      .email('Invalid email address')
+      .optional(),
+    phone: z
+      .string({
+        required_error: 'Email or phone is required',
+      })
+      .optional(),
   }),
 });
 

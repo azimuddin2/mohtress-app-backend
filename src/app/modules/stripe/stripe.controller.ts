@@ -39,7 +39,7 @@ const returnUrl = catchAsync(async (req: Request, res: Response) => {
   if (!result.isCompleted) {
     return sendResponse(res, {
       statusCode: httpStatus.OK,
-      success: true,
+      success: false,
       message: 'Stripe onboarding incomplete',
       data: {
         redirectUrl: `${config.client_Url}/seller/stripe-incomplete`,

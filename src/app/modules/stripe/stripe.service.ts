@@ -80,7 +80,7 @@ const refresh = async (stripeAccountId: string, query: Record<string, any>) => {
   if (!user) throw new AppError(httpStatus.BAD_REQUEST, 'User not found');
 
   const refresh_url = `${config.server_url}/api/v1/stripe/refresh/${stripeAccountId}?userId=${user._id}`;
-  const return_url = `${config.server_url}/api/v1/stripe/return?userId=${user._id}&stripeAccountId=${stripeAccountId}`;
+  const return_url = `${config.server_url}/api/v1/stripe/return?userId=${user._id}&stripeAccountId=${stripeAccountId}&success=true`;
 
   const accountLink = await StripeService.connectAccount(
     return_url,

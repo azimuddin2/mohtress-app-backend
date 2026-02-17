@@ -10,6 +10,7 @@ export type TStatus = 'ongoing' | 'confirmed' | 'blocked';
 export type TGender = 'male' | 'female' | 'other';
 
 export type TUser = {
+  save(): unknown;
   _id: ObjectId;
   fullName: string;
   phone: string;
@@ -64,6 +65,7 @@ export type TUser = {
 
 export interface UserModel extends Model<TUser> {
   isUserExistsByEmail(email: string): Promise<TUser>;
+  isUserExistsByPhone(phone: string): Promise<TUser>;
 
   isPasswordMatched(
     plainTextPassword: string,

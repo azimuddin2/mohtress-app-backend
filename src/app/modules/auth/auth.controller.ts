@@ -38,8 +38,7 @@ const handleChangePassword = catchAsync(async (req, res) => {
 });
 
 const handleForgotPassword = catchAsync(async (req, res) => {
-  const email = req.body.email;
-  const result = await AuthServices.forgotPassword(email);
+  const result = await AuthServices.forgotPassword(req.body);
 
   sendResponse(res, {
     statusCode: 200,
