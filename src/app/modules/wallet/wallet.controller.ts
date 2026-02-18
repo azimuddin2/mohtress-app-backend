@@ -5,13 +5,13 @@ import sendResponse from '../../utils/sendResponse';
 
 const getYearlyEarningChart = catchAsync(
   async (req: Request, res: Response) => {
-    const year = req.query as any;
-    const result = await WalletService.getYearlyEarningChartFromDB(year);
+    const userId = req.user.userId;
+    const result = await WalletService.getWeeklyEarningChartFromDB(userId);
 
     sendResponse(res, {
       statusCode: 200,
       success: true,
-      message: '',
+      message: 'Weekly Earning data retrieved successfully.',
       data: result,
     });
   },

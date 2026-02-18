@@ -1,68 +1,76 @@
+import AppError from '../../errors/AppError';
 import { Payment } from '../payment/payment.model';
+import { TUser } from '../user/user.interface';
+import { User } from '../user/user.model';
+import { getCurrentWeekRange } from './wallet.utils';
 
-const getYearlyEarningChartFromDB = async (year: string) => {
-  const startDate = new Date(`${year}-01-01`);
-  const endDate = new Date(`${year}-12-31`);
+const getWeeklyEarningChartFromDB = async (userId: string) => {
+  const { startDate, endDate } = getCurrentWeekRange();
+
+  const user = (await User.findById(userId)) as TUser | null;
+
+  if (!user) {
+    throw new AppError(404, 'User not found');
+  }
+
+  const matchStage: Record<string, any> = {
+    status: 'paid',
+    isDeleted: false,
+    createdAt: { $gte: startDate, $lte: endDate },
+  };
+
+  // 🔹 Role-based filtering (Based on YOUR Payment structure)
+
+  if (user.role === 'freelancer') {
+    matchStage.vendor = user._id;
+  }
+
+  if (user.role === 'customer') {
+    matchStage.customer = user._id;
+  }
 
   const result = await Payment.aggregate([
-    {
-      $match: {
-        status: 'paid',
-        isDeleted: false,
-        createdAt: {
-          $gte: startDate,
-          $lte: endDate,
-        },
-      },
-    },
+    { $match: matchStage },
     {
       $group: {
-        _id: { $month: '$createdAt' },
-        totalEarning: { $sum: '$vendorAmount' },
+        _id: {
+          day: {
+            $dayOfMonth: {
+              date: '$createdAt',
+              timezone: 'UTC',
+            },
+          },
+        },
+        total: { $sum: '$vendorAmount' },
       },
-    },
-    {
-      $sort: { _id: 1 },
     },
   ]);
 
-  // Jan–Dec ensure
-  const months = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  const yearlyData = months.map((month, index) => {
-    const found = result.find((r) => r._id === index + 1);
+  const data = Array.from({ length: 7 }, (_, i) => {
+    const date = new Date(startDate);
+    date.setUTCDate(startDate.getUTCDate() + i);
+
+    const found = result.find((r) => r._id.day === date.getUTCDate());
+
     return {
-      month,
-      value: found ? found.totalEarning : 0,
+      date: date.getUTCDate(),
+      day: days[i],
+      value: found ? found.total : 0,
     };
   });
 
-  const totalYearlyEarning = yearlyData.reduce(
-    (sum, item) => sum + item.value,
-    0,
-  );
+  const total = data.reduce((sum, item) => sum + item.value, 0);
 
   return {
-    year,
-    totalYearlyEarning,
-    // growth: '+4.91%', // optional (calculate later)
-    data: yearlyData,
+    startDate,
+    endDate,
+    total,
+    data,
   };
 };
 
 export const WalletService = {
-  getYearlyEarningChartFromDB,
+  getWeeklyEarningChartFromDB,
 };

@@ -4,6 +4,10 @@ import { WalletController } from './wallet.controller';
 
 const router = express.Router();
 
-router.get('/earning-chart', WalletController.getYearlyEarningChart);
+router.get(
+  '/earning-chart',
+  auth('owner', 'freelancer'),
+  WalletController.getYearlyEarningChart,
+);
 
 export const WalletRoute = router;
