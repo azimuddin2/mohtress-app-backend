@@ -9,7 +9,7 @@ import {
 import config from '../../config';
 import { User } from '../user/user.model';
 import { verifyToken } from '../../utils/verifyToken';
-import { createToken, isValidFcmToken, verifyAppleToken } from './auth.utils';
+import { createToken, isValidFcmToken } from './auth.utils';
 import { JwtPayload } from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import { generateOtp } from '../../utils/generateOtp';
@@ -17,11 +17,10 @@ import moment from 'moment';
 import { sendEmail } from '../../utils/sendEmail';
 import { TFreelancerRegistration } from '../freelancerRegistration/freelancerRegistration.interface';
 import { TOwnerRegistration } from '../ownerRegistration/ownerRegistration.interface';
-import { TUser } from '../user/user.interface';
+import { TRole, TUser } from '../user/user.interface';
 import { sendNotification } from '../notification/notification.utils';
 import httpStatus from 'http-status';
 import { Login_With, USER_ROLE } from '../user/user.constant';
-import admin from '../../utils/firebase';
 import { sendPhoneOTP } from '../../helpers/twilio.helper';
 
 const loginUser = async (payload: TLoginUser) => {
@@ -436,123 +435,56 @@ const logoutUser = async (userId: string) => {
 };
 
 // SOCIAL LOGIN METHODS GOOGLE & APPLE
-const googleLogin = async (payload: any) => {
-  try {
-    console.log('Google Token:', payload.token);
+const googleLogin = async (payload: {
+  email: string;
+  fullName: string;
+  role?: TRole;
+  picture?: string;
+  fcmToken?: string;
+}) => {
+  if (!payload?.email || !payload?.fullName) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Email and name are required');
+  }
 
-    if (!payload?.token) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'Token is required');
+  /* ================= FCM TOKEN VALIDATION ================= */
+  if (payload?.fcmToken) {
+    const isValid = await isValidFcmToken(payload.fcmToken);
+    if (!isValid) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Invalid FCM token');
     }
+  }
 
-    const decodedToken = await admin.auth().verifyIdToken(payload.token);
-    console.log('Decoded Google Token:', decodedToken);
+  /* ================= CHECK USER EXISTS ================= */
+  const existingUser = await User.isUserExistsByEmail(payload.email);
 
-    if (!decodedToken?.email) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'Invalid Google token');
+  /* =============== EXISTING USER LOGIN ================== */
+  if (existingUser) {
+    if (existingUser.isDeleted) {
+      throw new AppError(httpStatus.FORBIDDEN, 'User account is deleted');
     }
-
-    if (!decodedToken.email_verified) {
+    if (existingUser.status === 'blocked') {
+      throw new AppError(httpStatus.FORBIDDEN, 'User is blocked');
+    }
+    if (existingUser.loginWith !== Login_With.google) {
       throw new AppError(
-        httpStatus.BAD_REQUEST,
-        'Google email is not verified',
+        httpStatus.FORBIDDEN,
+        `Account already registered with ${existingUser.loginWith}`,
       );
     }
 
-    /* ================= FCM TOKEN VALIDATION ================= */
+    /* ================= UPDATE FCM TOKEN ================= */
     if (payload?.fcmToken) {
-      const isValid = await isValidFcmToken(payload.fcmToken);
-      if (!isValid) {
-        throw new AppError(httpStatus.BAD_REQUEST, 'Invalid FCM token');
-      }
+      await User.findByIdAndUpdate(existingUser._id, {
+        fcmToken: payload.fcmToken,
+      });
     }
 
-    /* ================= CHECK USER EXISTS ================= */
-    const existingUser = await User.isUserExistsByEmail(decodedToken.email);
-
-    /* =============== EXISTING USER LOGIN ================== */
-    if (existingUser) {
-      if (existingUser.isDeleted) {
-        throw new AppError(httpStatus.FORBIDDEN, 'User account is deleted');
-      }
-
-      if (existingUser.status === 'blocked') {
-        throw new AppError(httpStatus.FORBIDDEN, 'User is blocked');
-      }
-
-      if (existingUser.loginWith !== Login_With.google) {
-        throw new AppError(
-          httpStatus.FORBIDDEN,
-          `Account registered with ${existingUser.loginWith}`,
-        );
-      }
-
-      if (!existingUser.verification?.status) {
-        throw new AppError(
-          httpStatus.FORBIDDEN,
-          'User account is not verified',
-        );
-      }
-
-      /* ================= CREATE JWT ================= */
-      const jwtPayload: TJwtPayload = {
-        userId: existingUser._id.toString(),
-        email: existingUser.email,
-        role: existingUser.role,
-      };
-
-      const accessToken = createToken(
-        jwtPayload,
-        config.jwt_access_secret!,
-        config.jwt_access_expires_in!,
-      );
-
-      const refreshToken = createToken(
-        jwtPayload,
-        config.jwt_refresh_secret!,
-        config.jwt_refresh_expires_in!,
-      );
-
-      /* ================= UPDATE FCM TOKEN ================= */
-      if (payload?.fcmToken) {
-        await User.findByIdAndUpdate(existingUser._id, {
-          fcmToken: payload.fcmToken,
-        });
-      }
-
-      return {
-        user: existingUser,
-        accessToken,
-        refreshToken,
-      };
-    }
-
-    /* ================== NEW USER CREATE ==================== */
-    const newUser = await User.create({
-      fullName: decodedToken.name || 'Google User',
-      email: decodedToken.email,
-      phone: 'N/A',
-
-      streetAddress: 'N/A',
-      city: 'N/A',
-      state: 'N/A',
-      zipCode: 'N/A',
-
-      password: 'GOOGLE_LOGIN_NO_PASSWORD',
-      role: USER_ROLE.customer,
-      loginWth: Login_With.google,
-
-      isVerified: true,
-      verification: { status: true },
-
-      image: decodedToken.picture || null,
-      fcmToken: payload?.fcmToken || null,
-    });
-
-    /* ================= CREATE JWT FOR NEW USER ================= */
+    /* ================= CREATE JWT ================= */
     const jwtPayload: TJwtPayload = {
-      userId: newUser._id.toString(),
-      email: newUser.email,
-      role: newUser.role,
+      userId: existingUser._id.toString(),
+      name: existingUser.fullName,
+      email: existingUser.email,
+      role: existingUser.role,
     };
 
     const accessToken = createToken(
@@ -560,133 +492,107 @@ const googleLogin = async (payload: any) => {
       config.jwt_access_secret!,
       config.jwt_access_expires_in!,
     );
-
     const refreshToken = createToken(
       jwtPayload,
       config.jwt_refresh_secret!,
       config.jwt_refresh_expires_in!,
     );
 
-    return {
-      user: newUser,
-      accessToken,
-      refreshToken,
-    };
-  } catch (error: any) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      error?.message || 'Google login failed',
-    );
+    return { user: existingUser, accessToken, refreshToken };
   }
+
+  /* ================== NEW USER CREATE ==================== */
+  const newUser = await User.create({
+    fullName: payload.fullName,
+    email: payload.email,
+    phone: null,
+
+    streetAddress: 'N/A',
+    city: 'N/A',
+    state: 'N/A',
+    zipCode: 'N/A',
+
+    role: payload.role || USER_ROLE.customer,
+    loginWith: Login_With.google,
+
+    isVerified: true,
+    verification: { status: true },
+
+    image: payload?.picture || null,
+    fcmToken: payload?.fcmToken || null,
+  });
+
+  /* ================= CREATE JWT FOR NEW USER ================= */
+  const jwtPayload: TJwtPayload = {
+    userId: newUser._id.toString(),
+    name: newUser.fullName,
+    email: newUser.email,
+    role: newUser.role,
+  };
+
+  const accessToken = createToken(
+    jwtPayload,
+    config.jwt_access_secret!,
+    config.jwt_access_expires_in!,
+  );
+  const refreshToken = createToken(
+    jwtPayload,
+    config.jwt_refresh_secret!,
+    config.jwt_refresh_expires_in!,
+  );
+
+  return { user: newUser, accessToken, refreshToken };
 };
 
-const appleLogin = async (payload: any) => {
-  try {
-    if (!payload?.token) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'Token is required');
+const appleLogin = async (payload: {
+  email: string;
+  fullName: string;
+  role?: TRole;
+  fcmToken?: string;
+}) => {
+  if (!payload?.email || !payload?.fullName) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Email and name are required');
+  }
+
+  /* ================= FCM TOKEN VALIDATION ================= */
+  if (payload?.fcmToken) {
+    const isValid = await isValidFcmToken(payload.fcmToken);
+    if (!isValid) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Invalid FCM token');
+    }
+  }
+
+  /* ================= CHECK USER EXISTS ================= */
+  const existingUser = await User.isUserExistsByEmail(payload.email);
+
+  /* =============== EXISTING USER LOGIN ================== */
+  if (existingUser) {
+    if (existingUser.isDeleted) {
+      throw new AppError(httpStatus.FORBIDDEN, 'User account is deleted');
+    }
+    if (existingUser.status === 'blocked') {
+      throw new AppError(httpStatus.FORBIDDEN, 'User is blocked');
+    }
+    if (existingUser.loginWith !== Login_With.apple) {
+      throw new AppError(
+        httpStatus.FORBIDDEN,
+        `Account already registered with ${existingUser.loginWith}`,
+      );
     }
 
-    /* ================= VERIFY APPLE TOKEN ================= */
-    const decodedToken: any = await verifyAppleToken(payload.token);
-
-    if (!decodedToken?.sub) {
-      throw new AppError(httpStatus.BAD_REQUEST, 'Invalid Apple token');
-    }
-
-    // ⚠️ Apple email only first login
-    const email =
-      decodedToken.email || payload?.email || `${decodedToken.sub}@apple.com`;
-
-    /* ================= FCM TOKEN VALIDATION ================= */
+    /* ================= UPDATE FCM TOKEN ================= */
     if (payload?.fcmToken) {
-      const isValid = await isValidFcmToken(payload.fcmToken);
-      if (!isValid) {
-        throw new AppError(httpStatus.BAD_REQUEST, 'Invalid FCM token');
-      }
+      await User.findByIdAndUpdate(existingUser._id, {
+        fcmToken: payload.fcmToken,
+      });
     }
 
-    /* ================= CHECK USER EXISTS ================= */
-    const existingUser = await User.isUserExistsByEmail(email);
-
-    /* =============== EXISTING USER LOGIN ================== */
-    if (existingUser) {
-      if (existingUser.isDeleted) {
-        throw new AppError(httpStatus.FORBIDDEN, 'User account is deleted');
-      }
-
-      if (existingUser.status === 'blocked') {
-        throw new AppError(httpStatus.FORBIDDEN, 'User is blocked');
-      }
-
-      if (existingUser.loginWith !== Login_With.apple) {
-        throw new AppError(
-          httpStatus.FORBIDDEN,
-          `Account registered with ${existingUser.loginWith}`,
-        );
-      }
-
-      if (!existingUser.verification?.status) {
-        throw new AppError(
-          httpStatus.FORBIDDEN,
-          'User account is not verified',
-        );
-      }
-
-      /* ================= CREATE JWT ================= */
-      const jwtPayload: TJwtPayload = {
-        userId: existingUser._id.toString(),
-        email: existingUser.email,
-        role: existingUser.role,
-      };
-
-      const accessToken = createToken(
-        jwtPayload,
-        config.jwt_access_secret!,
-        config.jwt_access_expires_in!,
-      );
-
-      const refreshToken = createToken(
-        jwtPayload,
-        config.jwt_refresh_secret!,
-        config.jwt_refresh_expires_in!,
-      );
-
-      if (payload?.fcmToken) {
-        await User.findByIdAndUpdate(existingUser._id, {
-          fcmToken: payload.fcmToken,
-        });
-      }
-
-      return { user: existingUser, accessToken, refreshToken };
-    }
-
-    /* ================= NEW USER CREATE ================= */
-    const newUser = await User.create({
-      fullName: payload?.fullName || 'Apple User',
-      email,
-      phone: 'N/A',
-
-      streetAddress: 'N/A',
-      city: 'N/A',
-      state: 'N/A',
-      zipCode: 'N/A',
-
-      password: 'APPLE_LOGIN_NO_PASSWORD',
-      role: USER_ROLE.customer,
-      loginWth: Login_With.apple,
-
-      isVerified: true,
-      verification: { status: true },
-
-      image: null,
-      fcmToken: payload?.fcmToken || null,
-    });
-
-    /* ================= CREATE JWT FOR NEW USER ================= */
+    /* ================= CREATE JWT ================= */
     const jwtPayload: TJwtPayload = {
-      userId: newUser._id.toString(),
-      email: newUser.email,
-      role: newUser.role,
+      userId: existingUser._id.toString(),
+      name: existingUser.fullName,
+      email: existingUser.email,
+      role: existingUser.role,
     };
 
     const accessToken = createToken(
@@ -694,20 +600,56 @@ const appleLogin = async (payload: any) => {
       config.jwt_access_secret!,
       config.jwt_access_expires_in!,
     );
-
     const refreshToken = createToken(
       jwtPayload,
       config.jwt_refresh_secret!,
       config.jwt_refresh_expires_in!,
     );
 
-    return { user: newUser, accessToken, refreshToken };
-  } catch (error: any) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      error?.message || 'Apple login failed',
-    );
+    return { user: existingUser, accessToken, refreshToken };
   }
+
+  /* ================== NEW USER CREATE ==================== */
+  const newUser = await User.create({
+    fullName: payload.fullName,
+    email: payload.email,
+    phone: 'N/A',
+
+    streetAddress: 'N/A',
+    city: 'N/A',
+    state: 'N/A',
+    zipCode: 'N/A',
+
+    role: payload.role || USER_ROLE.customer,
+    loginWith: Login_With.google,
+
+    isVerified: true,
+    verification: { status: true },
+
+    image: null,
+    fcmToken: payload?.fcmToken || null,
+  });
+
+  /* ================= CREATE JWT FOR NEW USER ================= */
+  const jwtPayload: TJwtPayload = {
+    userId: newUser._id.toString(),
+    name: newUser.fullName,
+    email: newUser.email,
+    role: newUser.role,
+  };
+
+  const accessToken = createToken(
+    jwtPayload,
+    config.jwt_access_secret!,
+    config.jwt_access_expires_in!,
+  );
+  const refreshToken = createToken(
+    jwtPayload,
+    config.jwt_refresh_secret!,
+    config.jwt_refresh_expires_in!,
+  );
+
+  return { user: newUser, accessToken, refreshToken };
 };
 
 export const AuthServices = {

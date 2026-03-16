@@ -16,13 +16,15 @@ const userSchema = new Schema<TUser, UserModel>(
     },
     phone: {
       type: String,
-      required: [true, 'Phone Number is required'],
       trim: true,
+      default: null,
       validate: {
         validator: function (v) {
-          return /^\+?[0-9]{10,15}$/.test(v);
+          if (!v) return true; // allow empty
+          return /^\+[1-9]\d{7,14}$/.test(v);
         },
-        message: (props) => `${props.value} is not a valid phone number`,
+        message: (props) =>
+          `${props.value} is not a valid international phone number`,
       },
     },
     email: {
@@ -61,7 +63,7 @@ const userSchema = new Schema<TUser, UserModel>(
     },
     password: {
       type: String,
-      required: [true, 'Password is required'],
+      required: [false, 'Password is required'],
       minlength: [8, 'Password must be at least 8 characters'],
       // maxlength: [20, 'Password must not exceed 20 characters'],
     },

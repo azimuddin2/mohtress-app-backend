@@ -1,3 +1,4 @@
+import { Request, Response } from 'express';
 import catchAsync from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { UserServices } from './user.service';
@@ -35,7 +36,7 @@ import { UserServices } from './user.service';
 //   });
 // });
 
-const signupUser = catchAsync(async (req, res) => {
+const signupUser = catchAsync(async (req: Request, res: Response) => {
   const result = await UserServices.signupUserIntoDB(req.body);
 
   console.log('Signup User Controller:', req.body);
@@ -48,18 +49,20 @@ const signupUser = catchAsync(async (req, res) => {
   });
 });
 
-const createCustomerByAdmin = catchAsync(async (req, res) => {
-  const result = await UserServices.createCustomerByAdminIntoDB(req.body);
+const createCustomerByAdmin = catchAsync(
+  async (req: Request, res: Response) => {
+    const result = await UserServices.createCustomerByAdminIntoDB(req.body);
 
-  sendResponse(res, {
-    statusCode: 201,
-    success: true,
-    message: result.message,
-    data: result.user,
-  });
-});
+    sendResponse(res, {
+      statusCode: 201,
+      success: true,
+      message: result.message,
+      data: result.user,
+    });
+  },
+);
 
-const getAllUsers = catchAsync(async (req, res) => {
+const getAllUsers = catchAsync(async (req: Request, res: Response) => {
   const result = await UserServices.getAllUsersFromDB(req.query);
 
   sendResponse(res, {
@@ -71,7 +74,7 @@ const getAllUsers = catchAsync(async (req, res) => {
   });
 });
 
-const getUserProfile = catchAsync(async (req, res) => {
+const getUserProfile = catchAsync(async (req: Request, res: Response) => {
   const { email } = req.user;
 
   const result = await UserServices.getUserProfileFromDB(email);
@@ -84,7 +87,7 @@ const getUserProfile = catchAsync(async (req, res) => {
   });
 });
 
-const updateUserProfile = catchAsync(async (req, res) => {
+const updateUserProfile = catchAsync(async (req: Request, res: Response) => {
   const { email } = req.user;
   const result = await UserServices.updateUserProfileIntoDB(email, req.body);
 
@@ -96,7 +99,7 @@ const updateUserProfile = catchAsync(async (req, res) => {
   });
 });
 
-const updateUserPicture = catchAsync(async (req, res) => {
+const updateUserPicture = catchAsync(async (req: Request, res: Response) => {
   const { email } = req.user;
 
   console.log(email);
@@ -113,7 +116,7 @@ const updateUserPicture = catchAsync(async (req, res) => {
   });
 });
 
-const changeStatus = catchAsync(async (req, res) => {
+const changeStatus = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
 
   const result = await UserServices.changeStatusIntoDB(id, req.body);
@@ -126,7 +129,7 @@ const changeStatus = catchAsync(async (req, res) => {
   });
 });
 
-const deleteUserAccount = catchAsync(async (req, res) => {
+const deleteUserAccount = catchAsync(async (req: Request, res: Response) => {
   const userId = req.user.userId;
 
   const result = await UserServices.deleteUserAccountFromDB(userId);
@@ -139,22 +142,24 @@ const deleteUserAccount = catchAsync(async (req, res) => {
   });
 });
 
-const updateNotificationSettings = catchAsync(async (req, res) => {
-  const { email } = req.user;
-  const { notifications } = req.body; // ✅ extract boolean
+const updateNotificationSettings = catchAsync(
+  async (req: Request, res: Response) => {
+    const { email } = req.user;
+    const { notifications } = req.body; // ✅ extract boolean
 
-  const result = await UserServices.updateNotificationSettingsIntoDB(
-    email,
-    notifications, // ✅ boolean only
-  );
+    const result = await UserServices.updateNotificationSettingsIntoDB(
+      email,
+      notifications, // ✅ boolean only
+    );
 
-  sendResponse(res, {
-    statusCode: 200,
-    success: true,
-    message: 'Notification settings updated successfully.',
-    data: result,
-  });
-});
+    sendResponse(res, {
+      statusCode: 200,
+      success: true,
+      message: 'Notification settings updated successfully.',
+      data: result,
+    });
+  },
+);
 
 export const UserControllers = {
   // signupCustomer,

@@ -20,7 +20,6 @@ const getWeeklyEarningChartFromDB = async (userId: string) => {
   };
 
   // 🔹 Role-based filtering (Based on YOUR Payment structure)
-
   if (user.role === 'freelancer') {
     matchStage.vendor = user._id;
   }
