@@ -16,3 +16,9 @@ export const generateStrongPassword = (): string => {
       .join('')
   );
 };
+
+export const generateReferralCode = (fullName: string): string => {
+  const prefix = fullName.slice(0, 4).toUpperCase().replace(/\s/g, '');
+  const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `${prefix}-${suffix}`; // e.g. "AZIM-K9XP"
+};

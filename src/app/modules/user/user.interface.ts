@@ -56,11 +56,14 @@ export type TUser = {
 
   // 🔹 Stripe (Vendor / Connect)
   stripeAccountId?: string;
+  stripeOnboardingComplete?: boolean;
 
   // Referral
   referralCode?: string;
+  referredBy?: string | Types.ObjectId;
+  referralCount?: number;
+  referralEarnings?: number;
   isReferral?: boolean;
-  referredBy?: string;
 };
 
 export interface UserModel extends Model<TUser> {

@@ -10,4 +10,10 @@ router.get(
   WalletController.getYearlyEarningChart,
 );
 
+router.get(
+  '/earning-summary',
+  auth('owner', 'freelancer'),
+  WalletController.getEarningsSummary,
+);
+
 export const WalletRoute = router;

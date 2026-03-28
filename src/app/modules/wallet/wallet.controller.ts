@@ -17,6 +17,19 @@ const getYearlyEarningChart = catchAsync(
   },
 );
 
+const getEarningsSummary = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user.userId;
+  const result = await WalletService.getEarningsSummaryFromDB(userId);
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: 'Earning summary retrieved successfully.',
+    data: result,
+  });
+});
+
 export const WalletController = {
   getYearlyEarningChart,
+  getEarningsSummary,
 };

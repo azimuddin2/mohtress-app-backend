@@ -355,8 +355,6 @@ const resetPassword = async (token: string, payload: TResetPassword) => {
     'verification isVerified',
   );
 
-  console.log(userId);
-
   if (!user) {
     throw new AppError(404, 'This user is not found!');
   }
@@ -367,11 +365,6 @@ const resetPassword = async (token: string, payload: TResetPassword) => {
 
   if (user?.status === 'blocked') {
     throw new AppError(403, 'This user is blocked!');
-  }
-
-  const verifyExpiresAt = user?.verification?.expiresAt as Date;
-  if (new Date() > verifyExpiresAt) {
-    throw new AppError(400, 'otp has expired. Please resend it');
   }
 
   if (!user?.verification?.status) {
@@ -434,7 +427,6 @@ const logoutUser = async (userId: string) => {
   return null;
 };
 
-// SOCIAL LOGIN METHODS GOOGLE & APPLE
 const googleLogin = async (payload: {
   email: string;
   fullName: string;
@@ -455,7 +447,9 @@ const googleLogin = async (payload: {
   }
 
   /* ================= CHECK USER EXISTS ================= */
-  const existingUser = await User.isUserExistsByEmail(payload.email);
+  const existingUser = await User.findOne({ email: payload.email })
+    .populate('freelancerReg')
+    .populate('ownerReg');
 
   /* =============== EXISTING USER LOGIN ================== */
   if (existingUser) {
@@ -465,11 +459,35 @@ const googleLogin = async (payload: {
     if (existingUser.status === 'blocked') {
       throw new AppError(httpStatus.FORBIDDEN, 'User is blocked');
     }
-    if (existingUser.loginWith !== Login_With.google) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        `Account already registered with ${existingUser.loginWith}`,
-      );
+
+    // ✅ Freelancer approval check
+    if (existingUser.role === 'freelancer') {
+      const freelancer = existingUser.freelancerReg as
+        | TFreelancerRegistration
+        | any;
+      if (!freelancer)
+        throw new AppError(400, 'Your freelancer profile is incomplete.');
+      if (freelancer.approvalStatus === 'pending')
+        throw new AppError(403, 'Your freelancer account is under review.');
+      if (freelancer.approvalStatus === 'rejected')
+        throw new AppError(
+          403,
+          `Your freelancer account was rejected: "${freelancer.notes}"`,
+        );
+    }
+
+    // ✅ Owner approval check
+    if (existingUser.role === 'owner') {
+      const owner = existingUser.ownerReg as TOwnerRegistration | any;
+      if (!owner)
+        throw new AppError(400, 'Your salon owner profile is incomplete.');
+      if (owner.approvalStatus === 'pending')
+        throw new AppError(403, 'Your salon owner account is under review.');
+      if (owner.approvalStatus === 'rejected')
+        throw new AppError(
+          403,
+          `Your salon owner account was rejected: "${owner.notes}"`,
+        );
     }
 
     /* ================= UPDATE FCM TOKEN ================= */
@@ -572,12 +590,6 @@ const appleLogin = async (payload: {
     }
     if (existingUser.status === 'blocked') {
       throw new AppError(httpStatus.FORBIDDEN, 'User is blocked');
-    }
-    if (existingUser.loginWith !== Login_With.apple) {
-      throw new AppError(
-        httpStatus.FORBIDDEN,
-        `Account already registered with ${existingUser.loginWith}`,
-      );
     }
 
     /* ================= UPDATE FCM TOKEN ================= */

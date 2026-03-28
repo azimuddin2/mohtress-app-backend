@@ -14,24 +14,6 @@ router.post(
   UserControllers.signupUser,
 );
 
-// router.post(
-//   '/customer/signup',
-//   validateRequest(UserValidations.createUserValidationSchema),
-//   UserControllers.signupCustomer,
-// );
-
-// router.post(
-//   '/owner/signup',
-//   validateRequest(UserValidations.createUserValidationSchema),
-//   UserControllers.signupOwner,
-// );
-
-// router.post(
-//   '/freelancer/signup',
-//   validateRequest(UserValidations.createUserValidationSchema),
-//   UserControllers.signupFreelancer,
-// );
-
 router.post(
   '/admin/create-customer',
   auth('admin'),

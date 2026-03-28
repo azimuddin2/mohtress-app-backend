@@ -18,14 +18,14 @@ const userSchema = new Schema<TUser, UserModel>(
       type: String,
       trim: true,
       default: null,
-      validate: {
-        validator: function (v) {
-          if (!v) return true; // allow empty
-          return /^\+[1-9]\d{7,14}$/.test(v);
-        },
-        message: (props) =>
-          `${props.value} is not a valid international phone number`,
-      },
+      // validate: {
+      //   validator: function (v) {
+      //     if (!v) return true; // allow empty
+      //     return /^\+[1-9]\d{7,14}$/.test(v);
+      //   },
+      //   message: (props) =>
+      //     `${props.value} is not a valid international phone number`,
+      // },
     },
     email: {
       type: String,
@@ -184,18 +184,32 @@ const userSchema = new Schema<TUser, UserModel>(
       type: String,
       default: null,
     },
-    isReferral: {
+    stripeOnboardingComplete: {
       type: Boolean,
       default: false,
+    },
+
+    referralCode: {
+      type: String,
+      unique: true,
+      sparse: true,
     },
     referredBy: {
       type: Schema.Types.ObjectId,
       ref: 'User',
       default: null,
     },
-    referralCode: {
-      type: String,
-      default: null,
+    referralCount: {
+      type: Number,
+      default: 0,
+    },
+    referralEarnings: {
+      type: Number,
+      default: 0,
+    },
+    isReferral: {
+      type: Boolean,
+      default: false,
     },
   },
   {

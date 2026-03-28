@@ -2,7 +2,14 @@ import AppError from '../../errors/AppError';
 import { Payment } from '../payment/payment.model';
 import { TUser } from '../user/user.interface';
 import { User } from '../user/user.model';
-import { getCurrentWeekRange } from './wallet.utils';
+import {
+  buildMatchStage,
+  getAmountField,
+  getCurrentMonthRange,
+  getCurrentWeekRange,
+  getCurrentYearRange,
+  getTodayRange,
+} from './wallet.utils';
 
 const getWeeklyEarningChartFromDB = async (userId: string) => {
   const { startDate, endDate } = getCurrentWeekRange();
@@ -70,6 +77,40 @@ const getWeeklyEarningChartFromDB = async (userId: string) => {
   };
 };
 
+const getEarningsSummaryFromDB = async (userId: string) => {
+  const user = (await User.findById(userId)) as TUser | null;
+  if (!user) throw new AppError(404, 'User not found');
+
+  const { startDate: yStart, endDate: yEnd, year } = getCurrentYearRange();
+  const { startDate: mStart, endDate: mEnd } = getCurrentMonthRange();
+  const { startDate: tStart, endDate: tEnd } = getTodayRange();
+
+  const amountField = getAmountField(user.role);
+
+  const [yearly, monthly, today] = await Promise.all([
+    Payment.aggregate([
+      { $match: buildMatchStage(user, yStart, yEnd) },
+      { $group: { _id: null, total: { $sum: amountField } } },
+    ]),
+    Payment.aggregate([
+      { $match: buildMatchStage(user, mStart, mEnd) },
+      { $group: { _id: null, total: { $sum: amountField } } },
+    ]),
+    Payment.aggregate([
+      { $match: buildMatchStage(user, tStart, tEnd) },
+      { $group: { _id: null, total: { $sum: amountField } } },
+    ]),
+  ]);
+
+  return {
+    year,
+    yearlyTotal: yearly[0]?.total ?? 0,
+    monthlyTotal: monthly[0]?.total ?? 0,
+    todayTotal: today[0]?.total ?? 0,
+  };
+};
+
 export const WalletService = {
   getWeeklyEarningChartFromDB,
+  getEarningsSummaryFromDB,
 };

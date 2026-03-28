@@ -102,7 +102,10 @@ const returnUrl = async (payload: {
   // Ensure stripeAccountId saved
   const user = await User.findByIdAndUpdate(
     payload.userId,
-    { stripeAccountId: payload.stripeAccountId },
+    {
+      stripeAccountId: payload.stripeAccountId,
+      stripeOnboardingComplete: account.details_submitted,
+    },
     { new: true },
   );
 

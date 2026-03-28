@@ -47,8 +47,9 @@ const createOnlineBookingIntoDB = async (payload: TBooking, files: any) => {
   const slotStart = parseToMinutes(slotStartStr);
   const slotEnd = parseToMinutes(slotEndStr);
 
-  if (slotEnd <= slotStart)
+  if (slotEnd <= slotStart) {
     throw new AppError(400, 'End time must be later than start time');
+  }
 
   payload.slotStart = slotStart;
   payload.slotEnd = slotEnd;
@@ -61,6 +62,30 @@ const createOnlineBookingIntoDB = async (payload: TBooking, files: any) => {
   const bookingDate = new Date(date);
   if (bookingDate < new Date(today.toDateString()))
     throw new AppError(400, 'Cannot create booking for a past date');
+
+  if (bookingDate < new Date(today.toDateString()))
+    throw new AppError(400, 'Cannot create booking for a past date');
+
+  const isToday = bookingDate.toDateString() === today.toDateString();
+
+  if (isToday) {
+    const currentMinutes = today.getHours() * 60 + today.getMinutes();
+
+    if (slotEnd <= currentMinutes) {
+      throw new AppError(400, 'Cannot book a slot that has already passed');
+    }
+  }
+
+  if (isToday) {
+    const currentMinutes = today.getHours() * 60 + today.getMinutes();
+
+    if (slotStart < currentMinutes) {
+      throw new AppError(
+        400,
+        'Cannot book a slot that has already started or passed',
+      );
+    }
+  }
 
   // -------------------------------
   // 4️⃣ Validate Customer & Vendor

@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose, { Types } from 'mongoose';
 import AppError from '../../errors/AppError';
 import { TUser } from './user.interface';
 import { User } from './user.model';
@@ -6,20 +6,39 @@ import { sendEmail } from '../../utils/sendEmail';
 import QueryBuilder from '../../builder/QueryBuilder';
 import { userSearchableFields } from './user.constant';
 import { deleteFromS3, uploadToS3 } from '../../utils/awsS3FileUploader';
-import { generateStrongPassword } from './user.utils';
+import { generateReferralCode, generateStrongPassword } from './user.utils';
 
-const signupUserIntoDB = async (payload: TUser) => {
-  const exists = await User.findOne({
-    $or: [{ email: payload.email }, { phone: payload.phone }],
-  });
+const signupUserIntoDB = async (payload: TUser & { referralCode?: string }) => {
+  const existingEmail = await User.findOne({ email: payload.email });
+  if (existingEmail) {
+    throw new AppError(409, 'Email already exists');
+  }
 
-  if (exists) {
-    throw new AppError(409, 'Email or phone already exists');
+  const existingPhone = await User.findOne({ phone: payload.phone });
+  if (existingPhone) {
+    throw new AppError(409, 'Phone number already exists');
+  }
+
+  // ✅ referral code generate
+  const myReferralCode = generateReferralCode(payload.fullName);
+
+  // ✅ Only process if you have a referral code — optional
+  let referredById: Types.ObjectId | undefined;
+
+  if (payload.referralCode) {
+    const referrer = await User.findOne({ referralCode: payload.referralCode });
+    if (!referrer) throw new AppError(400, 'Invalid referral code');
+    referredById = referrer._id as unknown as Types.ObjectId;
   }
 
   const user = await User.create({
     ...payload,
     isVerified: false,
+    referralCode: myReferralCode,
+    referredBy: referredById ?? null,
+    referralRewarded: false,
+    referralCount: 0,
+    referralEarnings: 0,
   });
 
   return {
@@ -27,312 +46,10 @@ const signupUserIntoDB = async (payload: TUser) => {
     name: user.fullName,
     email: user.email,
     phone: user.phone,
+    referralCode: user.referralCode,
     verificationOptions: ['email', 'phone'],
   };
 };
-
-// const signupCustomerIntoDB = async (payload: TUser) => {
-//   // 1. Check if user already exists
-//   const existingUser = await User.findOne({ email: payload.email });
-//   if (existingUser) {
-//     throw new AppError(409, `${payload.email} already exists.`);
-//   }
-
-//   // 2. Generate OTP and expiration
-//   const otp = generateOtp();
-//   const expiresAt = moment().add(3, 'minutes').toDate();
-
-//   // 3. Prepare data with verification details
-//   const userData: Partial<TUser> = {
-//     ...payload,
-//     role: 'customer',
-//     isVerified: false,
-//     verification: {
-//       otp,
-//       expiresAt,
-//       status: false,
-//     },
-//   };
-
-//   // 4. Create user in DB
-//   const result = await User.create(userData);
-
-//   // 5. Create JWT token (optional for next step)
-//   const jwtPayload: TJwtPayload = {
-//     userId: result._id,
-//     name: result?.fullName,
-//     email: result?.email,
-//     role: result?.role,
-//   };
-
-//   const accessToken = createToken(
-//     jwtPayload,
-//     config.jwt_access_secret as string,
-//     '5m',
-//   );
-
-//   // 6. Send OTP email
-//   await sendEmail(
-//     result.email,
-//     'Your OTP Code',
-//     `
-//   <!DOCTYPE html>
-//   <html lang="en">
-//   <head>
-//     <meta charset="UTF-8" />
-//     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-//     <title>OTP Verification</title>
-//   </head>
-//   <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
-//     <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 30px 0;">
-//       <tr>
-//         <td align="center">
-//           <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; padding: 40px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.05);">
-//             <tr>
-//               <td align="center" style="padding-bottom: 20px;">
-//                 <h2 style="color: #007BFF; margin: 0;">Verify Your Email</h2>
-//               </td>
-//             </tr>
-//             <tr>
-//               <td style="font-size: 16px; color: #333333; padding-bottom: 20px; text-align: center;">
-//                 <p style="margin: 0;">Use the OTP below to verify your email address and complete your registration:</p>
-//               </td>
-//             </tr>
-//             <tr>
-//               <td align="center" style="padding: 20px 0;">
-//                 <div style="display: inline-block; padding: 15px 30px; font-size: 24px; font-weight: bold; color: #ffffff; background-color: #007BFF; border-radius: 6px; letter-spacing: 2px;">
-//                   ${otp}
-//                 </div>
-//               </td>
-//             </tr>
-//             <tr>
-//               <td style="font-size: 14px; color: #666666; text-align: center; padding-bottom: 20px;">
-//                 <p style="margin: 0;">This code is valid until <strong>${expiresAt.toLocaleString()}</strong>.</p>
-//               </td>
-//             </tr>
-//             <tr>
-//               <td style="font-size: 13px; color: #999999; text-align: center;">
-//                 <p style="margin: 0;">If you did not request this code, you can safely ignore this email.</p>
-//               </td>
-//             </tr>
-//             <tr>
-//               <td style="padding-top: 30px; text-align: center;">
-//                 <p style="font-size: 12px; color: #cccccc; margin: 0;">&copy; ${new Date().getFullYear()} Your Company Name. All rights reserved.</p>
-//               </td>
-//             </tr>
-//           </table>
-//         </td>
-//       </tr>
-//     </table>
-//   </body>
-//   </html>
-//   `,
-//   );
-
-//   return { accessToken };
-// };
-
-// const signupOwnerIntoDB = async (payload: TUser) => {
-//   // 1. Check if user already exists
-//   const existingUser = await User.findOne({ email: payload.email });
-//   if (existingUser) {
-//     throw new AppError(409, `${payload.email} already exists.`);
-//   }
-
-//   // 2. Generate OTP and expiration
-//   const otp = generateOtp();
-//   const expiresAt = moment().add(3, 'minutes').toDate();
-
-//   // 3. Prepare data with verification details
-//   const userData: Partial<TUser> = {
-//     ...payload,
-//     role: 'owner',
-//     isVerified: false,
-//     verification: {
-//       otp,
-//       expiresAt,
-//       status: false,
-//     },
-//   };
-
-//   // 4. Create user in DB
-//   const result = await User.create(userData);
-
-//   // 5. Create JWT token (optional for next step)
-//   const jwtPayload: TJwtPayload = {
-//     userId: result._id,
-//     name: result?.fullName,
-//     email: result?.email,
-//     role: result?.role,
-//   };
-
-//   const accessToken = createToken(
-//     jwtPayload,
-//     config.jwt_access_secret as string,
-//     '5m',
-//   );
-
-//   // 7. Send OTP email
-//   await sendEmail(
-//     result.email,
-//     'Your OTP Code',
-//     `
-//   <!DOCTYPE html>
-//   <html lang="en">
-//   <head>
-//     <meta charset="UTF-8" />
-//     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-//     <title>OTP Verification</title>
-//   </head>
-//   <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
-//     <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 30px 0;">
-//       <tr>
-//         <td align="center">
-//           <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; padding: 40px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.05);">
-//             <tr>
-//               <td align="center" style="padding-bottom: 20px;">
-//                 <h2 style="color: #007BFF; margin: 0;">Verify Your Email</h2>
-//               </td>
-//             </tr>
-//             <tr>
-//               <td style="font-size: 16px; color: #333333; padding-bottom: 20px; text-align: center;">
-//                 <p style="margin: 0;">Use the OTP below to verify your email address and complete your registration:</p>
-//               </td>
-//             </tr>
-//             <tr>
-//               <td align="center" style="padding: 20px 0;">
-//                 <div style="display: inline-block; padding: 15px 30px; font-size: 24px; font-weight: bold; color: #ffffff; background-color: #007BFF; border-radius: 6px; letter-spacing: 2px;">
-//                   ${otp}
-//                 </div>
-//               </td>
-//             </tr>
-//             <tr>
-//               <td style="font-size: 14px; color: #666666; text-align: center; padding-bottom: 20px;">
-//                 <p style="margin: 0;">This code is valid until <strong>${expiresAt.toLocaleString()}</strong>.</p>
-//               </td>
-//             </tr>
-//             <tr>
-//               <td style="font-size: 13px; color: #999999; text-align: center;">
-//                 <p style="margin: 0;">If you did not request this code, you can safely ignore this email.</p>
-//               </td>
-//             </tr>
-//             <tr>
-//               <td style="padding-top: 30px; text-align: center;">
-//                 <p style="font-size: 12px; color: #cccccc; margin: 0;">&copy; ${new Date().getFullYear()} Your Company Name. All rights reserved.</p>
-//               </td>
-//             </tr>
-//           </table>
-//         </td>
-//       </tr>
-//     </table>
-//   </body>
-//   </html>
-//   `,
-//   );
-
-//   return { accessToken };
-// };
-
-// const signupFreelancerIntoDB = async (payload: TUser) => {
-//   // 1. Check if user already exists
-//   const existingUser = await User.findOne({ email: payload.email });
-//   if (existingUser) {
-//     throw new AppError(409, `${payload.email} already exists.`);
-//   }
-
-//   // 2. Generate OTP and expiration
-//   const otp = generateOtp();
-//   const expiresAt = moment().add(3, 'minutes').toDate();
-
-//   // 3. Prepare data with verification details
-//   const userData: Partial<TUser> = {
-//     ...payload,
-//     role: 'freelancer',
-//     isVerified: false,
-//     verification: {
-//       otp,
-//       expiresAt,
-//       status: false,
-//     },
-//   };
-
-//   // 4. Create user in DB
-//   const result = await User.create(userData);
-
-//   // 5. Create JWT token (optional for next step)
-//   const jwtPayload: TJwtPayload = {
-//     userId: result._id,
-//     name: result?.fullName,
-//     email: result?.email,
-//     role: result?.role,
-//   };
-
-//   const accessToken = createToken(
-//     jwtPayload,
-//     config.jwt_access_secret as string,
-//     '5m',
-//   );
-
-//   // 6. Send OTP email
-//   await sendEmail(
-//     result.email,
-//     'Your OTP Code',
-//     `
-//   <!DOCTYPE html>
-//   <html lang="en">
-//   <head>
-//     <meta charset="UTF-8" />
-//     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-//     <title>OTP Verification</title>
-//   </head>
-//   <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
-//     <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 30px 0;">
-//       <tr>
-//         <td align="center">
-//           <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; padding: 40px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.05);">
-//             <tr>
-//               <td align="center" style="padding-bottom: 20px;">
-//                 <h2 style="color: #007BFF; margin: 0;">Verify Your Email</h2>
-//               </td>
-//             </tr>
-//             <tr>
-//               <td style="font-size: 16px; color: #333333; padding-bottom: 20px; text-align: center;">
-//                 <p style="margin: 0;">Use the OTP below to verify your email address and complete your registration:</p>
-//               </td>
-//             </tr>
-//             <tr>
-//               <td align="center" style="padding: 20px 0;">
-//                 <div style="display: inline-block; padding: 15px 30px; font-size: 24px; font-weight: bold; color: #ffffff; background-color: #007BFF; border-radius: 6px; letter-spacing: 2px;">
-//                   ${otp}
-//                 </div>
-//               </td>
-//             </tr>
-//             <tr>
-//               <td style="font-size: 14px; color: #666666; text-align: center; padding-bottom: 20px;">
-//                 <p style="margin: 0;">This code is valid until <strong>${expiresAt.toLocaleString()}</strong>.</p>
-//               </td>
-//             </tr>
-//             <tr>
-//               <td style="font-size: 13px; color: #999999; text-align: center;">
-//                 <p style="margin: 0;">If you did not request this code, you can safely ignore this email.</p>
-//               </td>
-//             </tr>
-//             <tr>
-//               <td style="padding-top: 30px; text-align: center;">
-//                 <p style="font-size: 12px; color: #cccccc; margin: 0;">&copy; ${new Date().getFullYear()} Your Company Name. All rights reserved.</p>
-//               </td>
-//             </tr>
-//           </table>
-//         </td>
-//       </tr>
-//     </table>
-//   </body>
-//   </html>
-//   `,
-//   );
-
-//   return { accessToken };
-// };
 
 const createCustomerByAdminIntoDB = async (payload: TUser) => {
   const { fullName, email, phone } = payload;
@@ -692,9 +409,6 @@ const updateNotificationSettingsIntoDB = async (
 
 export const UserServices = {
   signupUserIntoDB,
-  // signupCustomerIntoDB,
-  // signupOwnerIntoDB,
-  // signupFreelancerIntoDB,
   createCustomerByAdminIntoDB,
   getAllUsersFromDB,
   getUserProfileFromDB,
