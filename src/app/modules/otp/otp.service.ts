@@ -248,6 +248,7 @@ const verifyOtp = async (payload: TVerifyOtp) => {
   const jwtPayload: TJwtPayload = {
     userId: user._id.toString(),
     email: user.email,
+    phone: user.phone,
     role: user.role,
   };
 
@@ -322,6 +323,7 @@ const AdminVerifyOtp = async (token: string, otp: TVerifyOtp) => {
   const jwtPayload: TJwtPayload = {
     userId: user._id.toString(),
     email: user?.email,
+    phone: user.phone,
     role: user?.role,
   };
 

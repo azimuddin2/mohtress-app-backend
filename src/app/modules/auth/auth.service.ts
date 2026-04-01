@@ -25,7 +25,7 @@ import { sendPhoneOTP } from '../../helpers/twilio.helper';
 
 const loginUser = async (payload: TLoginUser) => {
   // 1️⃣ Find user and populate profiles
-  const user = await User.findOne({ email: payload.email })
+  const user = await User.findOne({ phone: payload.phone })
     .populate('freelancerReg')
     .populate('ownerReg');
 
@@ -47,7 +47,8 @@ const loginUser = async (payload: TLoginUser) => {
       userId: user._id.toString(),
       name: user.fullName,
       email: user.email,
-      role: 'owner', // special limited token
+      phone: user.phone,
+      role: 'owner',
     };
 
     const token = createToken(
@@ -95,7 +96,7 @@ const loginUser = async (payload: TLoginUser) => {
 
   if (payload.fcmToken) {
     updatedUser = (await User.findOneAndUpdate(
-      { email: payload.email },
+      { email: payload.phone },
       { fcmToken: payload.fcmToken?.trim() }, // trim added
       { new: true, runValidators: true },
     )) as TUser;
@@ -122,6 +123,7 @@ const loginUser = async (payload: TLoginUser) => {
     userId: user._id.toString(),
     name: user.fullName,
     email: user.email,
+    phone: user.phone,
     role: user.role,
   };
 
@@ -146,9 +148,9 @@ const refreshToken = async (token: string) => {
 
   const decoded = verifyToken(token, config.jwt_refresh_secret as string);
 
-  const { email, iat } = decoded;
+  const { phone } = decoded;
 
-  const user = await User.findOne({ email: email });
+  const user = await User.findOne({ phone: phone });
 
   if (!user) {
     throw new AppError(404, 'This user is not found!');
@@ -167,6 +169,7 @@ const refreshToken = async (token: string) => {
     userId: user._id.toString(),
     name: user?.fullName,
     email: user?.email,
+    phone: user?.phone,
     role: user?.role,
   };
 
@@ -185,7 +188,7 @@ const changePassword = async (
   userData: JwtPayload,
   payload: TChangePassword,
 ) => {
-  const user = await User.isUserExistsByEmail(userData?.email);
+  const user = await User.isUserExistsByPhone(userData?.phone);
 
   if (!user) {
     throw new AppError(404, 'This user is not found!');
@@ -248,6 +251,7 @@ const forgotPassword = async (payload: TForgotPassword) => {
     userId: user._id.toString(),
     name: user?.fullName,
     email: user?.email,
+    phone: user?.phone,
     role: user?.role,
   };
 
@@ -349,7 +353,7 @@ const resetPassword = async (token: string, payload: TResetPassword) => {
 
   const decoded = verifyToken(token, config.jwt_access_secret as string);
 
-  const { userId, email } = decoded;
+  const { userId } = decoded;
 
   const user = await User.findById({ _id: userId }).select(
     'verification isVerified',
@@ -502,6 +506,7 @@ const googleLogin = async (payload: {
       userId: existingUser._id.toString(),
       name: existingUser.fullName,
       email: existingUser.email,
+      phone: existingUser.phone,
       role: existingUser.role,
     };
 
@@ -545,6 +550,7 @@ const googleLogin = async (payload: {
     userId: newUser._id.toString(),
     name: newUser.fullName,
     email: newUser.email,
+    phone: newUser.phone || '',
     role: newUser.role,
   };
 
@@ -604,6 +610,7 @@ const appleLogin = async (payload: {
       userId: existingUser._id.toString(),
       name: existingUser.fullName,
       email: existingUser.email,
+      phone: existingUser.phone,
       role: existingUser.role,
     };
 
@@ -647,6 +654,7 @@ const appleLogin = async (payload: {
     userId: newUser._id.toString(),
     name: newUser.fullName,
     email: newUser.email,
+    phone: newUser.phone,
     role: newUser.role,
   };
 

@@ -2,7 +2,7 @@ import { ObjectId } from 'mongoose';
 import { TRole } from '../user/user.interface';
 
 export type TLoginUser = {
-  email: string;
+  phone: string;
   password: string;
   fcmToken?: string;
 };
@@ -11,6 +11,7 @@ export type TJwtPayload = {
   userId: ObjectId | string;
   name?: string;
   email: string;
+  phone: string;
   role: TRole;
   image?: string;
   iat?: number;

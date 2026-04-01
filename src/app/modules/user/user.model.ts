@@ -16,16 +16,17 @@ const userSchema = new Schema<TUser, UserModel>(
     },
     phone: {
       type: String,
+      required: true,
       trim: true,
-      default: null,
-      // validate: {
-      //   validator: function (v) {
-      //     if (!v) return true; // allow empty
-      //     return /^\+[1-9]\d{7,14}$/.test(v);
-      //   },
-      //   message: (props) =>
-      //     `${props.value} is not a valid international phone number`,
-      // },
+      unique: true,
+      sparse: true,
+      validate: {
+        validator: function (v: string) {
+          return /^\+[1-9]\d{6,14}$/.test(v);
+        },
+        message: (props: { value: string }) =>
+          `${props.value} is not a valid phone number. Use E.164 format (e.g. +12812166971)`,
+      },
     },
     email: {
       type: String,
@@ -33,6 +34,7 @@ const userSchema = new Schema<TUser, UserModel>(
       unique: true,
       sparse: true,
       lowercase: true,
+      default: null,
       validate: {
         validator: function (v: string) {
           if (!v) return true;

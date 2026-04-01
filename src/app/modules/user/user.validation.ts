@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { UserRole, UserStatus } from './user.constant';
+import { isValidPhoneNumber } from 'libphonenumber-js';
 
 // ✅ Register (Create) User Validation Schema
 const createUserValidationSchema = z.object({
@@ -16,13 +17,17 @@ const createUserValidationSchema = z.object({
       .string({
         required_error: 'Phone number is required',
       })
-      .regex(/^\+?[0-9]{10,15}$/, 'Invalid phone number'),
+      .trim()
+      .refine((val) => isValidPhoneNumber(val), {
+        message: 'Invalid phone number',
+      }),
 
     email: z
       .string({
         required_error: 'Email is required',
       })
-      .email('Invalid email address'),
+      .email('Invalid email address')
+      .optional(),
 
     streetAddress: z
       .string({
