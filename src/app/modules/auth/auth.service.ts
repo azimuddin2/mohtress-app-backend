@@ -24,8 +24,20 @@ import { Login_With, USER_ROLE } from '../user/user.constant';
 import { sendPhoneOTP } from '../../helpers/twilio.helper';
 
 const loginUser = async (payload: TLoginUser) => {
-  // 1️⃣ Find user and populate profiles
-  const user = await User.findOne({ phone: payload.phone })
+  // 1️⃣ detect phone or email
+  const isEmail = payload.phoneOrEmail.includes('@');
+
+  let query: any = {};
+
+  if (isEmail) {
+    query.email = payload.phoneOrEmail.trim().toLowerCase();
+  } else {
+    query.phone = payload.phoneOrEmail.trim();
+  }
+
+  // 2️⃣ find user
+  const user = await User.findOne(query)
+    .select('+password')
     .populate('freelancerReg')
     .populate('ownerReg');
 
@@ -34,11 +46,12 @@ const loginUser = async (payload: TLoginUser) => {
   if (user.status === 'blocked')
     throw new AppError(403, 'This user is blocked!');
 
-  // 2️⃣ Password check
+  // 3️⃣ password check
   const isPasswordMatched = await User.isPasswordMatched(
     payload.password,
     user.password,
   );
+
   if (!isPasswordMatched) throw new AppError(403, 'Password does not match!');
 
   // 3️⃣ Handle incomplete owner registration
@@ -94,21 +107,18 @@ const loginUser = async (payload: TLoginUser) => {
 
   let updatedUser: TUser = user;
 
+  // 7️⃣ save FCM
   if (payload.fcmToken) {
     updatedUser = (await User.findOneAndUpdate(
-      { email: payload.phone },
-      { fcmToken: payload.fcmToken?.trim() }, // trim added
-      { new: true, runValidators: true },
+      { _id: user._id },
+      { fcmToken: payload.fcmToken.trim() },
+      { new: true },
     )) as TUser;
-
-    console.log('FCM Token saved:', updatedUser?.fcmToken);
   }
 
-  const tokenToUse = updatedUser?.fcmToken;
-
-  // Send notification only if token exists AND valid
-  if (tokenToUse && updatedUser?.notifications) {
-    sendNotification([tokenToUse], {
+  // 8️⃣ notification
+  if (updatedUser?.fcmToken && updatedUser?.notifications) {
+    sendNotification([updatedUser.fcmToken], {
       title: 'Login successfully',
       message: 'New user login to your account',
       receiver: updatedUser._id as any,
@@ -118,7 +128,7 @@ const loginUser = async (payload: TLoginUser) => {
     });
   }
 
-  // 5️⃣ Generate JWT tokens for approved accounts
+  // 9️⃣ JWT
   const jwtPayload: TJwtPayload = {
     userId: user._id.toString(),
     name: user.fullName,
@@ -132,6 +142,7 @@ const loginUser = async (payload: TLoginUser) => {
     config.jwt_access_secret as string,
     config.jwt_access_expires_in as string,
   );
+
   const refreshToken = createToken(
     jwtPayload,
     config.jwt_refresh_secret as string,

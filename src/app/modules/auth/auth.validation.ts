@@ -2,13 +2,15 @@ import { z } from 'zod';
 
 const loginValidationSchema = z.object({
   body: z.object({
-    phone: z.string({
-      required_error: 'Phone is required',
+    phoneOrEmail: z.string({
+      required_error: 'Phone or Email is required',
     }),
 
     password: z.string({
       required_error: 'Password is required',
     }),
+
+    fcmToken: z.string().optional(),
   }),
 });
 

@@ -43,10 +43,10 @@ const initializeSocketIO = (server: HttpServer) => {
       //----------------------check Token and return user details-------------------------//
       const user: any = await getUserDetailsFromToken(token);
 
-      if (!user) {
-        // io.emit('io-error', {success:false, message:'invalid Token'});
-        throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid token');
-      }
+      // if (!user) {
+      //   // io.emit('io-error', {success:false, message:'invalid Token'});
+      //   throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid token');
+      // }
 
       socket.join(user?._id?.toString());
 

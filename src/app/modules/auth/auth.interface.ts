@@ -2,7 +2,7 @@ import { ObjectId } from 'mongoose';
 import { TRole } from '../user/user.interface';
 
 export type TLoginUser = {
-  phone: string;
+  phoneOrEmail: string;
   password: string;
   fcmToken?: string;
 };
