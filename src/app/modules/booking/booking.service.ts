@@ -228,7 +228,7 @@ const createOnlineBookingIntoDB = async (payload: TBooking, files: any) => {
   // -------------------------------
   if (customerExists?.fcmToken) {
     await sendNotification([customerExists.fcmToken], {
-      title: 'Booking Confirmed',
+      title: 'Booking Created',
       message: `Your booking for ${serviceExists.name} on ${payload.date} at ${payload.time} is confirmed!`,
       receiver: customerExists._id as any,
       receiverEmail: customerExists.email,
@@ -493,16 +493,15 @@ const getBookingsHistoryByCustomerFromDB = async (
     throw new AppError(403, 'Only customer can perform this access');
   }
 
-  // If no status = throw error
-  if (!status) {
-    throw new AppError(400, 'Booking status is required');
-  }
-
-  const query = {
-    email: user.email,
+  const query: Record<string, any> = {
+    $or: [{ customer: user._id }, { email: user.email }],
     isDeleted: false,
-    status, // required filter
+    status,
   };
+
+  if (status === 'pending') {
+    query.isPaid = false;
+  }
 
   const bookings = await Booking.find(query)
     .populate('service')
@@ -729,7 +728,7 @@ const bookingApprovedRequestIntoDB = async (
   // 5️⃣ Update only the request field in the database
   const result = await Booking.findByIdAndUpdate(
     id,
-    { request: payload.request, status: 'in-process' },
+    { request: payload.request, status: 'pending' },
     { new: true },
   );
 
@@ -740,8 +739,8 @@ const bookingApprovedRequestIntoDB = async (
   // Customer Notification
   if (customer?.fcmToken) {
     await sendNotification([customer.fcmToken], {
-      title: 'Booking Approved',
-      message: `Your booking for service ${booking.service} on ${booking.date} at ${booking.time} has been approved.`,
+      title: '✅ Booking Approved',
+      message: `Great news! Your booking for "${booking.service}" on ${booking.date} at ${booking.time} has been approved. Please complete your payment to confirm your appointment. You can view your booking details in Booking History.`,
       receiver: customer._id,
       receiverEmail: customer.email,
       receiverRole: customer.role,
@@ -841,6 +840,7 @@ const getVendorAppHomeBookingsFromDB = async (
     vendor: vendorId,
     isDeleted: false,
     request: 'approved',
+    isPaid: true,
   })
     .populate('service')
     .populate({

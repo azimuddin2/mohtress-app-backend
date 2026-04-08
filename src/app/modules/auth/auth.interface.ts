@@ -19,8 +19,7 @@ export type TJwtPayload = {
 };
 
 export type TForgotPassword = {
-  email: string;
-  phone: string;
+  phoneOrEmail: string;
 };
 
 export type TChangePassword = {

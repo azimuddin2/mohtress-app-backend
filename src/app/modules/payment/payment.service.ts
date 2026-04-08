@@ -158,7 +158,7 @@ const confirmPayment = async (query: {
 
     const booking = await Booking.findByIdAndUpdate(
       payment.booking,
-      { status: 'pending', isPaid: true },
+      { status: 'completed', isPaid: true },
       { new: true, session },
     );
 
