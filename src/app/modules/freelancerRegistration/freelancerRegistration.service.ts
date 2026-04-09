@@ -149,6 +149,12 @@ const getAllFreelancersFromDB = async (query: Record<string, unknown>) => {
   }
 
   // ⭐ Subcategory filter
+  if (query.category) {
+    serviceFilter.category = query.category;
+    delete query.category;
+  }
+
+  // ⭐ Subcategory filter
   if (query.subcategory) {
     serviceFilter.subcategory = query.subcategory;
     delete query.subcategory;

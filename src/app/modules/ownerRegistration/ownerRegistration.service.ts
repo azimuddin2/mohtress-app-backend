@@ -132,6 +132,12 @@ const getAllOwnerRegistrationFromDB = async (
   // 🔍 Build service filter
   const serviceFilter: Record<string, any> = { isDeleted: false };
 
+  // ⭐ category filter
+  if (query.category) {
+    serviceFilter.category = query.category;
+    delete query.category;
+  }
+
   // ⭐ Subcategory filter
   if (query.subcategory) {
     serviceFilter.subcategory = query.subcategory;
