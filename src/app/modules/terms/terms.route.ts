@@ -10,7 +10,7 @@ router.get('/', TermsController.getTerms);
 
 router.post(
   '/',
-  // auth('admin'),
+  auth('admin'),
   validateRequest(TermsValidation.createTermsValidationSchema),
   TermsController.upsertTerms,
 );

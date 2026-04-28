@@ -15,9 +15,10 @@ export const uploadToS3 = async ({
   file: any;
   fileName: string;
 }): Promise<string | null> => {
+  const fileExtention = file.originalname.split('.').pop();
   const command = new PutObjectCommand({
     Bucket: config.aws_bucket,
-    Key: fileName,
+    Key: `${fileName}.${fileExtention}`,
     Body: file.buffer,
     ContentType: file.mimetype,
   });
@@ -28,7 +29,7 @@ export const uploadToS3 = async ({
       throw new AppError(400, 'File Upload failed');
     }
 
-    const url = `https://${config.aws_bucket}.s3.${config.aws_region}.amazonaws.com/${fileName}`;
+    const url = `https://${config.aws_bucket}.s3.${config.aws_region}.amazonaws.com/${fileName}.${fileExtention}`;
 
     return url;
   } catch (error) {

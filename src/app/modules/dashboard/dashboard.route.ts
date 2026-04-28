@@ -22,4 +22,10 @@ router.get(
   DashboardControllers.getEarningsStats,
 );
 
+router.get(
+  '/user-stats/:id',
+  auth('admin'),
+  DashboardControllers.getUserStatsFromDB,
+);
+
 export const DashboardRoutes = router;

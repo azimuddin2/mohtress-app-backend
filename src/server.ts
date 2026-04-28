@@ -12,7 +12,7 @@ async function main() {
   try {
     await mongoose.connect(config.database_url as string);
     console.log(
-      chalk.green('✅ Connection to database is successfully established'),
+      chalk.green('🟢 Connection to database is successfully established'),
     );
 
     server = app.listen(config.port, () => {

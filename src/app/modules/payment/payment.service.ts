@@ -11,9 +11,12 @@ import { TPayment } from './payment.interface';
 import { generateTrxId } from './payment.utils';
 import QueryBuilder from '../../builder/QueryBuilder';
 import { paymentSearchableFields } from './payment.constant';
+import { Price } from '../price/price.model';
 
 const createPayment = async (payload: TPayment) => {
-  const DEPOSIT_AMOUNT = 10; // USD Fixed deposit amount
+  const adminPrice = await Price.findOne({});
+
+  const DEPOSIT_AMOUNT = adminPrice?.price ?? 10;
 
   const session = await startSession();
   session.startTransaction();

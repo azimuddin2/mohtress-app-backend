@@ -1,3 +1,4 @@
+import { Types } from 'mongoose';
 import { Booking } from '../booking/booking.model';
 import { FreelancerRegistration } from '../freelancerRegistration/freelancerRegistration.model';
 import { OwnerRegistration } from '../ownerRegistration/ownerRegistration.model';
@@ -231,8 +232,63 @@ const getEarningsStatsFromDB = async () => {
   return { totalEarning, todayEarning };
 };
 
+const getUserStatsFromDB = async (customerId: string) => {
+  const [bookingStats, paymentStats] = await Promise.all([
+    // Total booking count from Booking model
+    Booking.aggregate([
+      {
+        $match: {
+          customer: new Types.ObjectId(customerId),
+          isDeleted: false,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalBooking: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          totalBooking: 1,
+        },
+      },
+    ]),
+
+    // Total payment amount from Payment model
+    Payment.aggregate([
+      {
+        $match: {
+          customer: new Types.ObjectId(customerId),
+          isPaid: true,
+          isDeleted: false,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalPayment: { $sum: '$price' },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          totalPayment: 1,
+        },
+      },
+    ]),
+  ]);
+
+  return {
+    totalBooking: bookingStats[0]?.totalBooking ?? 0,
+    totalPayment: paymentStats[0]?.totalPayment ?? 0,
+  };
+};
+
 export const DashboardService = {
   getOverviewStatsFromDB,
   getRequestStatsFromDB,
   getEarningsStatsFromDB,
+  getUserStatsFromDB,
 };
