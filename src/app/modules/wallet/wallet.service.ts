@@ -15,25 +15,13 @@ const getWeeklyEarningChartFromDB = async (userId: string) => {
   const { startDate, endDate } = getCurrentWeekRange();
 
   const user = (await User.findById(userId)) as TUser | null;
+  if (!user) throw new AppError(404, 'User not found');
 
-  if (!user) {
-    throw new AppError(404, 'User not found');
-  }
+  // ✅ Use buildMatchStage for consistency (handles owner + freelancer + customer)
+  const matchStage = buildMatchStage(user, startDate, endDate);
 
-  const matchStage: Record<string, any> = {
-    status: 'paid',
-    isDeleted: false,
-    createdAt: { $gte: startDate, $lte: endDate },
-  };
-
-  // 🔹 Role-based filtering (Based on YOUR Payment structure)
-  if (user.role === 'freelancer') {
-    matchStage.vendor = user._id;
-  }
-
-  if (user.role === 'customer') {
-    matchStage.customer = user._id;
-  }
+  // ✅ Use getAmountField for consistency
+  const amountField = getAmountField(user.role);
 
   const result = await Payment.aggregate([
     { $match: matchStage },
@@ -47,7 +35,7 @@ const getWeeklyEarningChartFromDB = async (userId: string) => {
             },
           },
         },
-        total: { $sum: '$vendorAmount' },
+        total: { $sum: amountField }, // ✅ dynamic amount field
       },
     },
   ]);
@@ -69,12 +57,7 @@ const getWeeklyEarningChartFromDB = async (userId: string) => {
 
   const total = data.reduce((sum, item) => sum + item.value, 0);
 
-  return {
-    startDate,
-    endDate,
-    total,
-    data,
-  };
+  return { startDate, endDate, total, data };
 };
 
 const getEarningsSummaryFromDB = async (userId: string) => {
